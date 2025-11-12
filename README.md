@@ -230,6 +230,14 @@ lib/
 
 ```bash
 flutter pub get       # 패키지 설치
-flutter run -d chrome # 또는 -d emulator-5554
+flutter run
+
+
+<NDK 설치>
+1.Android Studio 상단 메뉴에서 Tools > SDK Manager로 이동하세요.
+2.SDK Tools 탭을 선택합니다.
+3.NDK (Side by side) 항목의 체크박스를 선택하세요.
+4.오른쪽 아래의 Show Package Details를 체크하고, 27.0.12077973 버전을 설치합니다.
+5.Apply 또는 OK를 눌러 설치를 진행합니다.
 
 
