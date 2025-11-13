@@ -1,6 +1,10 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
+
+    // ★ Firebase용 플러그인 한 줄 추가
+    id("com.google.gms.google-services")
+
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }

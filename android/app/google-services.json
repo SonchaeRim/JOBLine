@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "606339491265",
+    "project_id": "jobline-d1064",
+    "storage_bucket": "jobline-d1064.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:606339491265:android:6877b359609555346cfb40",
+        "android_client_info": {
+          "package_name": "com.jobline.jobline"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBk0kiiT6n-Rfm-_mrp5EpWO6F6PS5MZI8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
