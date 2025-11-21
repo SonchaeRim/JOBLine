@@ -25,6 +25,7 @@ class RouteNames {
   // ========== 챌린지 ==========
   static const String challengeDetail = '/home/challenge/detail';
   static const String proofCamera = '/home/challenge/proof-camera';
+  static const String certificationHistory = '/home/challenge/history';
 
   // ========== 채팅 ==========
   static const String chatRoom = '/home/chat/room';

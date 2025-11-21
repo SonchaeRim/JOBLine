@@ -5,6 +5,8 @@ import '../models/rank.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../routes/app_routes.dart';
 import '../../challenge/services/challenge_service.dart';
+import '../../../routes/route_names.dart';
+
 
 /// XP 배지 위젯 (홈 화면용)
 class XpBadge extends StatelessWidget {
@@ -193,7 +195,7 @@ class XpBadge extends StatelessWidget {
         if (challenges.isNotEmpty && context.mounted) {
           Navigator.pushNamed(
             context,
-            AppRoutes.proofCamera,
+            RouteNames.proofCamera,
             arguments: {
               'challengeId': challenges.first.id,
               'userId': userId,

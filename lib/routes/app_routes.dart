@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../features/challenge/screens/certification_history_screen.dart';
 import 'route_names.dart';
 
 import '../features/common/screens/splash_screen.dart'; // 앱 첫 실행 시 보여주는 스플래시 화면
@@ -289,6 +290,21 @@ class AppRoutes {
           ),
           settings: settings,
         );
+
+      case RouteNames.certificationHistory: {
+        final uid = settings.arguments as String?; // 또는 Map 받아서 uid 꺼내도 됨
+        if (uid == null) {
+          return MaterialPageRoute(
+            builder: (_) => const ErrorScreen(unknownRouteName: 'certificationHistory: uid missing'),
+            settings: settings,
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => CertificationHistoryScreen(userId: uid),
+          settings: settings,
+        );
+      }
+
 
       case RouteNames.proofCamera:
       // 예: 어떤 챌린지에 대한 인증인지 challengeId 등을 넘길 수도 있음

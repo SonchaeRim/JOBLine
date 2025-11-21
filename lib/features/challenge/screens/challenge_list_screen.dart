@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../routes/route_names.dart';
 import '../services/challenge_service.dart';
 import '../../../routes/app_routes.dart';
 import '../../xp/models/rank.dart';
@@ -363,7 +364,7 @@ class _ChallengeListScreenState extends State<ChallengeListScreen> {
         if (challenges.isNotEmpty && mounted) {
           Navigator.pushNamed(
             context,
-            AppRoutes.proofCamera,
+            RouteNames.proofCamera,
             arguments: {
               'challengeId': challenges.first.id,
               'userId': _currentUserId!,
@@ -389,7 +390,7 @@ class _ChallengeListScreenState extends State<ChallengeListScreen> {
   void _navigateToCertificationHistory() {
     Navigator.pushNamed(
       context,
-      AppRoutes.certificationHistory,
+      RouteNames.certificationHistory,
       arguments: {
         'userId': _currentUserId!,
       },
