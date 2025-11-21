@@ -239,5 +239,3 @@ flutter run
 3.NDK (Side by side) 항목의 체크박스를 선택하세요.
 4.오른쪽 아래의 Show Package Details를 체크하고, 27.0.12077973 버전을 설치합니다.
 5.Apply 또는 OK를 눌러 설치를 진행합니다.
-
-
