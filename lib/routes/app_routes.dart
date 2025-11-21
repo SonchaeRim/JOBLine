@@ -56,6 +56,61 @@ import '../features/board/screens/post_detail_screen.dart'; // 게시글 상세 
 import '../features/board/screens/post_editor_screen.dart'; // 게시글 작성/수정 화면
 // 게시판 종류에 따라 필수 입력 필드(작성 틀)가 다르게 표시됨
 // 작성 완료 시 BoardService 로 저장, 수정 시 기존 데이터 업데이트
+import '../features/challenge/screens/certification_history_screen.dart';
+import 'route_names.dart';
+
+import '../features/common/screens/splash_screen.dart'; // 앱 첫 실행 시 보여주는 스플래시 화면
+// 일정 시간 뒤에 항상 /login 으로 이동 (자동 로그인 기능 없음)
+
+import '../features/common/screens/home_screen.dart'; // 메인 홈 화면
+// 메인 홈 화면은 하단 BottomNavigationBar (게시판, 캘린더, 채팅, 챌린지, 프로필 등) 탭 전환만 담당함.
+// 실제 내용은 각 feature의 screen이 담당함.
+
+import '../features/common/screens/error_screen.dart'; // 에러 화면
+// 정의되지 않은 라우트나 치명적인 에러 발생 시 보여줄 공통 에러 화면
+
+// 앱 전체 공통 레이아웃 위젯들 (route는 아니지만 구조 파악용)
+// import '../features/common/widgets/app_scaffold.dart'; -> AppBar / BottomNavBar 를 포함한 공통 Scaffold
+// import '../features/common/widgets/bottom_nav_bar.dart'; -> 하단 탭바 위젯
+
+
+//  ========== Auth 영역 (사용자가 누구인지 확인하는 기능) ==========
+import '../features/auth/screens/login_screen.dart'; // 로그인 화면
+// 로그인 화면에서 이메일/아이디 + 비밀번호 입력
+// auth_service.dart 안에 로그인을 처리하는 클래스(AuthService 클래스)를 통해 Firebase Auth 로그인
+// 성공 시 /home 으로 이동
+
+import '../features/auth/screens/signup_screen.dart'; // 회원가입 화면
+// 이름, 생년월일, 이메일, 아이디, 닉네임, 비밀번호 등 입력
+// 가입 성공 후 관심 분야/커뮤니티 배정을 위해 community 쪽으로 연결
+
+// Auth 관련 서비스/모델 (route는 아니지만 어떤 기능인지)
+// import '../features/auth/models/user_profile.dart'; -> 유저 프로필 데이터 모델 (닉네임, 학교, 전공, 관심분야, 경험치 등)
+// import '../features/auth/services/auth_service.dart'; -> 로그인/로그아웃/회원가입 등 인증 로직
+// import '../features/auth/services/profile_service.dart'; -> 프로필 조회/수정, 프로필 이미지 업로드 등
+// import '../features/auth/widgets/error_banner.dart'; -> 로그인/회원가입 에러 메시지 표시용 배너 위젯
+
+
+// ========== 커뮤니티 영역 ==========
+import '../features/community/screens/category_select_screen.dart'; // 회원가입 이후 관심 분야 기반으로 커뮤니티 카테고리 선택하는 화면
+// 개발/IT, 디자인/예술, 공기업 등 관심있는 커뮤니티의 카테고리 선택하면 "이 커뮤니티에 가입하시겠습니까?" 다이얼로그 표시
+// 최종 확인이 되면 프로필의 mainCommunity로 저장되면서 메인 홈으로 이동
+// 또는 설정 탭에서 "커뮤니티 변경"을 누르면 나오는 화면
+
+import '../features/community/screens/main_community_screen.dart'; // 사용자의 커뮤니티 내 홈 화면
+
+import '../features/community/models/community.dart'; //-> 커뮤니티 ID, 이름, 카테고리, 설명 등을 담는 데이터 모델
+import '../features/community/services/community_service.dart'; //-> 관심분야 기반 자동 배정, 커뮤니티 목록 조회/변경 로직
+
+
+// ========= 게시판 영역 =========
+import '../features/board/screens/post_list_screen.dart';
+import '../features/board/screens/board_tabs_screen.dart'; // 커뮤니티 내 게시판 메인 화면
+// - 자유/스펙공유/스터디모집/취준/기업후기 탭으로 나뉜 게시판 리스트
+
+import '../features/board/screens/post_detail_screen.dart'; // 게시글 상세 화면
+// 게시글 제목/본문/첨부파일/좋아요/댓글/대댓글 표시
+// 신고/차단 기능으로 연결
 
 // import '../features/board/models/post.dart'; -> 게시글 데이터 모델 (title, content, authorId, createdAt 등)
 // import '../features/board/models/post_template.dart'; -> 게시판 종류별로 다른 "작성 틀" 정의
@@ -223,13 +278,174 @@ class AppRoutes {
     RouteNames.myPosts:         (context) => const MyPostsScreen(),
     // [설정 > 내가 쓴 댓글]
     RouteNames.myComments:      (context) => const MyCommentsScreen(),
+    // --- 공통 ---
+    RouteNames.splash: (context) => const SplashScreen(),
+    RouteNames.error:  (context) => const ErrorScreen(),
+
+    // --- Auth ---
+    RouteNames.login:  (context) => const LoginScreen(),
+    RouteNames.signup: (context) => const SignUpScreen(),
+
+    // --- 홈(탭 루트) ---
+    RouteNames.home:   (context) => const HomeScreen(),
+
+    // --- 커뮤니티 (회원가입/변경 공용) ---
+    RouteNames.categorySelect: (context) => const CategorySelectScreen(),
+    // 회원가입 직후 관심 분야 기반 커뮤니티 선택 화면
+    RouteNames.mainCommunity:  (context) => const MainCommunityScreen(),
+    // 사용자의 커뮤니티 홈(필요 시 사용)
+
+    // --- 게시판 루트(탭 화면) ---
+    RouteNames.board:  (context) => const BoardTabsScreen(),
+
+    // --- 캘린더 루트 ---
+    RouteNames.calendar: (context) => const CalendarScreen(),
+
+    // --- 채팅 루트 ---
+    RouteNames.chat: (context) => const ChatListScreen(),
+
+    // --- 챌린지 루트 ---
+    RouteNames.challenge: (context) => const ChallengeListScreen(),
+
+    // --- 설정 루트 & 설정 하위 화면들 ---
+    RouteNames.settings:        (context) => const SettingScreen(),
+    // [설정 > 계정 > 아이디 변경]
+    RouteNames.idChange:        (context) => const IdChangeScreen(),
+    // [설정 > 계정 > 비밀번호 변경]
+    RouteNames.passwordChange:  (context) => const PasswordChangeScreen(),
+    // [설정 > 계정 > 닉네임 변경]
+    RouteNames.nicknameChange:  (context) => const NicknameChangeScreen(),
+    // [설정 > 커뮤니티 변경]
+    RouteNames.communityChange: (context) => const CommunityChangeScreen(),
+    // [설정 > 내가 쓴 게시물]
+    RouteNames.myPosts:         (context) => const MyPostsScreen(),
+    // [설정 > 내가 쓴 댓글]
+    RouteNames.myComments:      (context) => const MyCommentsScreen(),
   };
+
+  /// arguments(게시글/챌린지/채팅방 ID 등)가 필요한 화면을 처리하는 곳.
+  ///
+  /// 예)
+  /// ```dart
+  /// Navigator.pushNamed(
+  ///   context,
+  ///   RouteNames.postDetail,
+  ///   arguments: post,   // 또는 postId
+  /// );
+  /// ```
+  static Route<dynamic> onGenerateRoute(RouteSettings settings) {
+    switch (settings.name) {
+
+    // ------------- 게시판 상세/작성 -------------
+      case RouteNames.postDetail:
+      // arguments 로 Post 객체나 postId 를 받는다고 가정
+        final args = settings.arguments;
+        return MaterialPageRoute(
+          builder: (_) => PostDetailScreen(
+            // TODO: 실제 생성자에 맞게 수정
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.postEditor:
+      // 새 글 작성(인자 없음) 또는 수정(기존 Post 전달) 둘 다 지원 가능
+        final args = settings.arguments;
+        return MaterialPageRoute(
+          builder: (_) => PostEditorScreen(
+            // TODO: 실제 생성자에 맞게 수정
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.postList: {
+        final args = settings.arguments as Map<String, dynamic>?;
+
+        final boardId = args?['boardId'] as String?;
+        final title   = args?['title']   as String?;
+
+        if (boardId == null || title == null) {
+          return MaterialPageRoute(
+            builder: (_) => const ErrorScreen(unknownRouteName: 'postList args missing'),
+            settings: settings,
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => PostListScreen(boardId: boardId, title: title),
+          settings: settings,
+        );
+      }
+
+
+    // ------------- 챌린지 상세 & 증빙 업로드 -------------
+      case RouteNames.challengeDetail:
+      // 예: 특정 챌린지 정보나 id 를 넘길 수 있음
+        final args = settings.arguments;
+        return MaterialPageRoute(
+          builder: (_) => ChallengeDetailScreen(
+            // TODO: 실제 생성자에 맞게 수정
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.certificationHistory: {
+        final uid = settings.arguments as String?; // 또는 Map 받아서 uid 꺼내도 됨
+        if (uid == null) {
+          return MaterialPageRoute(
+            builder: (_) => const ErrorScreen(unknownRouteName: 'certificationHistory: uid missing'),
+            settings: settings,
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => CertificationHistoryScreen(userId: uid),
+          settings: settings,
+        );
+      }
+
+
+      case RouteNames.proofCamera:
+      // 예: 어떤 챌린지에 대한 인증인지 challengeId 등을 넘길 수도 있음
+        final args = settings.arguments;
+        return MaterialPageRoute(
+          builder: (_) => ProofCameraScreen(
+            // TODO: 필요 시 인자 사용
+          ),
+          settings: settings,
+        );
+
+    // ------------- 채팅방 / 새 채팅 -------------
+      case RouteNames.chatRoom:
+      // arguments 로 ChatRoom 이나 roomId 를 받는다고 가정
+        final args = settings.arguments;
+        return MaterialPageRoute(
+          builder: (_) => ChatRoomScreen(
+            // TODO: 실제 생성자에 맞게 수정
+          ),
+          settings: settings,
+        );
+
+      case RouteNames.newChat:
+      // 새 채팅방 생성 화면 (일반 화면 형태, 다이얼로그 아님)
+        return MaterialPageRoute(
+          builder: (_) => const NewChatScreen(),
+          settings: settings,
+        );
+
+    }
+
+    // 여기까지 왔다면 정의되지 않은 경로 → 공통 에러 화면으로 보냄
+    return MaterialPageRoute(
+      builder: (_) => ErrorScreen(
+        unknownRouteName: settings.name,
+      ),
+      settings: settings,
+    );
+  }
 
  String? get proofCamera => null;
 
  String? get certificationHistory => null;
 
-  
+
 
   /// arguments(게시글/챌린지/채팅방 ID 등)가 필요한 화면을 처리하는 곳.
   ///
@@ -315,5 +531,9 @@ class AppRoutes {
     );
   }
 }
+
+
+
+
 
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../routes/route_names.dart';
 import '../models/challenge.dart';
 import '../models/certification.dart';
 import '../services/proof_service.dart';
@@ -220,7 +221,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
         onPressed: () async {
           final result = await Navigator.pushNamed(
             context,
-            AppRoutes.proofCamera,
+            RouteNames.proofCamera,
             arguments: {
               'challengeId': widget.challenge.id,
               'userId': widget.userId,
