@@ -1,4 +1,3 @@
-
 //이메일/비밀번호/닉네임 입력 폼
 
 import 'package:flutter/material.dart';

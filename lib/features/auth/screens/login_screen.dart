@@ -31,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const Text(
               'JL',
               style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
-            ),
+          ),
             const SizedBox(height: 50),
             //아이디 입력
             TextField(
@@ -40,62 +40,62 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: InputDecoration(
                 hintText: "아이디",
                 filled: true,
-                fillColor: Colors.white,
-                border: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey.shade400),
-                ),
-                enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey.shade400),
-                ),
-                focusedBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.black),
-                ),
-              ) ,
-            ),
-            const SizedBox(height:10),
+              fillColor: Colors.white,
+              border: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.grey.shade400),
+              ),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.grey.shade400),
+              ),
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.black),
+              ),
+          ) ,
+        ),
+          const SizedBox(height:10),
 
-            //비밀번호 입력
-            TextField(
-              controller: passwordController,
-              obscureText: !_isPasswordVisible,
-              style: const TextStyle(fontSize: 16),
-              decoration: InputDecoration(
-                hintText: "비밀번호",
-                filled: true,
-                fillColor: Colors.white,
-                border: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey.shade400),
-                ),
-                enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey.shade400),
-                ),
-                focusedBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.black),
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                      _isPasswordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                      color: Colors.grey
-                  ) ,
-                  onPressed: () {
-                    setState(() {
-                      _isPasswordVisible = !_isPasswordVisible; //상태 업데이트
-                    });
-                  },
-                ),
+          //비밀번호 입력
+          TextField(
+            controller: passwordController,
+            obscureText: !_isPasswordVisible,
+            style: const TextStyle(fontSize: 16),
+            decoration: InputDecoration(
+              hintText: "비밀번호",
+              filled: true,
+              fillColor: Colors.white,
+              border: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.grey.shade400),
+              ),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.grey.shade400),
+              ),
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.black),
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _isPasswordVisible
+                      ? Icons.visibility
+                      : Icons.visibility_off,
+                color: Colors.grey
+            ) ,
+                onPressed: () {
+                  setState(() {
+                    _isPasswordVisible = !_isPasswordVisible; //상태 업데이트
+                  });
+                },
               ),
             ),
-            const SizedBox(height:30),
-            //로그인 버튼
+          ),
+          const SizedBox(height:30),
+          //로그인 버튼
             SizedBox(
               width: double.infinity, //버튼 너비 넓게
-              height: 50,
+                height: 50,
               child: ElevatedButton(
                 onPressed: () {
                   //이동 로직
-                },
+               },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
@@ -105,53 +105,54 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: const Text('로그인',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
               ),
             ),
-            const SizedBox(height:10),
+          ),
+          const SizedBox(height:10),
 
-            //회원가입 버튼
-            SizedBox(
-              width: double.infinity, //버튼 너비 넓게
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () {
-                  //이동 로직
+          //회원가입 버튼
+        SizedBox(
+          width: double.infinity, //버튼 너비 넓게
+          height: 50,
+          child: ElevatedButton(
+            onPressed: () {
+              //이동 로직
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('로그인',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+        const SizedBox(height: 10),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            const Text('자동 로그인', style: TextStyle(fontSize: 14)), // 텍스트 추가
+            Checkbox(
+              value: _isLoginChecked,
+              onChanged: (bool? newValue) {
+                setState(() {
+                  _isLoginChecked = newValue ?? false; // 상태 업데이트
+                  });
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text('로그인',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                activeColor: Colors.blue,
               ),
-            ),
-            const SizedBox(height: 10),
+            ],
+          ),
+        const SizedBox(height: 50),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const Text('자동 로그인', style: TextStyle(fontSize: 14)), // 텍스트 추가
-                Checkbox(
-                  value: _isLoginChecked,
-                  onChanged: (bool? newValue) {
-                    setState(() {
-                      _isLoginChecked = newValue ?? false; // 상태 업데이트
-                    });
-                  },
-                  activeColor: Colors.blue,
-                ),
-              ],
-            ),
-            const SizedBox(height: 50),
-
-          ],
+        ],
         ),
       ),
     );
   }
 }
+
