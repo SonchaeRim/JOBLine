@@ -188,7 +188,7 @@ class AppRoutes {
 
     // --- Auth ---
     RouteNames.login:  (context) => const LoginScreen(),
-    RouteNames.signup: (context) => const SignupScreen(),
+    RouteNames.signup: (context) => const SignUpScreen(),
 
     // --- 홈(탭 루트) ---
     RouteNames.home:   (context) => const HomeScreen(),

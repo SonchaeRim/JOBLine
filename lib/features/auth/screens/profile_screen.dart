@@ -271,4 +271,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
               const Divider(color: Colors.black12, height: 1),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 

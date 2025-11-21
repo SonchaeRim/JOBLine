@@ -3,14 +3,14 @@ import '../../community/services/community_service.dart';
 
 const demoUid = 'demo-uid'; // TODO: Auth 붙이면 교체
 
-class MainCommunityBadge extends StatefulWidget {
-  const MainCommunityBadge({super.key});
+class MainCommunityScreen extends StatefulWidget {
+  const MainCommunityScreen({super.key});
 
   @override
-  State<MainCommunityBadge> createState() => _MainCommunityBadgeState();
+  State<MainCommunityScreen> createState() => _MainCommunityScreenState();
 }
 
-class _MainCommunityBadgeState extends State<MainCommunityBadge> {
+class _MainCommunityScreenState extends State<MainCommunityScreen> {
   final _svc = CommunityService();
   String? _name;
   bool _loading = true;

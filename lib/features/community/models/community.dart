@@ -42,7 +42,7 @@ class Community {
     };
   }
 
-  // 있던 fromMap도 계속 쓰고 싶다면 이렇게 맞춰둘 수 있어요.
+  // 있던 fromMap도 계속 쓰고 싶다면 이렇게 맞춰둘 수 있음
   factory Community.fromMap(String id, Map<String, dynamic> m) =>
       Community.fromDoc(id, m);
 }
