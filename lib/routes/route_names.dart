@@ -17,7 +17,8 @@ class RouteNames {
   static const String categorySelect = '/community/category-select'; // 회원가입 이후 커뮤니티 선택
   static const String mainCommunity = '/community/main'; // 커뮤니티 홈 화면
 
-  // ========== 게시판 ==========
+  // 게시판
+  static const String postList   = '/home/board/list';     //  추가
   static const String postDetail = '/home/board/detail';
   static const String postEditor = '/home/board/editor';
 

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../routes/route_names.dart';
 // 라우트 준비 전이니 import는 잠시 보류해도 됨
 // import '../../../routes/route_names.dart';
 
@@ -43,10 +45,11 @@ class BoardTabsScreen extends StatelessWidget {
                     onTap: () {
                       Navigator.pushNamed(
                         context,
-                        '/board/list', // RouteNames.postList 써도 OK
+                        RouteNames.postList, // ✅ 하드코드 문자열 대신 상수 사용
                         arguments: {'boardId': b['id'], 'title': b['title']},
                       );
                     },
+
 
                     child: Ink(
                       padding: const EdgeInsets.symmetric(
