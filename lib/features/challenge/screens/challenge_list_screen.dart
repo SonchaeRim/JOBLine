@@ -78,7 +78,7 @@ class _ChallengeListScreenState extends State<ChallengeListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            Row(
+          Row(
             children: [
               const Icon(Icons.celebration, color: Colors.red, size: 24),
               const SizedBox(width: 8),
@@ -252,7 +252,7 @@ class _ChallengeListScreenState extends State<ChallengeListScreen> {
                   final index = entry.key;
                   final isCurrentRank = rank == currentRank;
                   final height = 40.0 + (index * 10.0);
-                  
+
                   return Expanded(
                     child: Column(
                       children: [
@@ -358,7 +358,7 @@ class _ChallengeListScreenState extends State<ChallengeListScreen> {
     // Stream의 첫 번째 값을 가져와서 사용
     StreamSubscription<List<dynamic>>? subscription;
     subscription = _challengeService.getActiveChallenges().listen(
-      (challenges) {
+          (challenges) {
         subscription?.cancel(); // 첫 번째 값만 받고 구독 취소
         if (challenges.isNotEmpty && mounted) {
           Navigator.pushNamed(

@@ -268,4 +268,3 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
     );
   }
 }
-
