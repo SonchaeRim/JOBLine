@@ -317,26 +317,31 @@ class AppRoutes {
         );
 
     // ------------- 채팅방 / 새 채팅 -------------
+      case RouteNames.chat:
+        return MaterialPageRoute(
+          builder: (_) => const ChatListScreen(),
+          settings: settings,
+        );
+
       case RouteNames.chatRoom:
-      // arguments 로 ChatRoom 이나 roomId 를 받는다고 가정
-        final args = settings.arguments;
+        final args = settings.arguments as ChatRoomScreenArgs;
         return MaterialPageRoute(
           builder: (_) => ChatRoomScreen(
-            // TODO: 실제 생성자에 맞게 수정
+            roomId: args.roomId,
+            roomTitle: args.roomTitle,
+            isGroup: args.isGroup,
           ),
           settings: settings,
         );
 
       case RouteNames.newChat:
-      // 새 채팅방 생성 화면 (일반 화면 형태, 다이얼로그 아님)
         return MaterialPageRoute(
           builder: (_) => const NewChatScreen(),
           settings: settings,
         );
 
-    }
 
-    // 여기까지 왔다면 정의되지 않은 경로 → 공통 에러 화면으로 보냄
+        // 여기까지 왔다면 정의되지 않은 경로 → 공통 에러 화면으로 보냄
     return MaterialPageRoute(
       builder: (_) => ErrorScreen(
         unknownRouteName: settings.name,
