@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../features/challenge/screens/certification_history_screen.dart';
 import 'route_names.dart';
 
 import '../features/common/screens/splash_screen.dart'; // 앱 첫 실행 시 보여주는 스플래시 화면
@@ -41,11 +42,12 @@ import '../features/community/screens/category_select_screen.dart'; // 회원가
 
 import '../features/community/screens/main_community_screen.dart'; // 사용자의 커뮤니티 내 홈 화면
 
-// import '../features/community/models/community.dart'; -> 커뮤니티 ID, 이름, 카테고리, 설명 등을 담는 데이터 모델
-// import '../features/community/services/community_service.dart'; -> 관심분야 기반 자동 배정, 커뮤니티 목록 조회/변경 로직
+import '../features/community/models/community.dart'; //-> 커뮤니티 ID, 이름, 카테고리, 설명 등을 담는 데이터 모델
+import '../features/community/services/community_service.dart'; //-> 관심분야 기반 자동 배정, 커뮤니티 목록 조회/변경 로직
 
 
 // ========= 게시판 영역 =========
+import '../features/board/screens/post_list_screen.dart';
 import '../features/board/screens/board_tabs_screen.dart'; // 커뮤니티 내 게시판 메인 화면
 // - 자유/스펙공유/스터디모집/취준/기업후기 탭으로 나뉜 게시판 리스트
 
@@ -57,13 +59,13 @@ import '../features/board/screens/post_editor_screen.dart'; // 게시글 작성/
 // 게시판 종류에 따라 필수 입력 필드(작성 틀)가 다르게 표시됨
 // 작성 완료 시 BoardService 로 저장, 수정 시 기존 데이터 업데이트
 
-// import '../features/board/models/post.dart'; -> 게시글 데이터 모델 (title, content, authorId, createdAt 등)
-// import '../features/board/models/post_template.dart'; -> 게시판 종류별로 다른 "작성 틀" 정의
-// import '../features/board/models/board_category.dart'; -> 자유/스펙공유/스터디/취준/기업후기 등 게시판 유형 정보
-// import '../features/board/services/board_service.dart'; -> 글 목록 조회, 작성/수정/삭제, 좋아요 등 게시판 비즈니스 로직
-// import '../features/board/services/report_block_service.dart'; -> 신고/차단 기능 처리 (무관/위반 게시글 숨기기/삭제)
-// import '../features/board/widgets/post_card.dart'; -> 게시글 목록에서 한 개의 게시글을 카드 형태로 보여주는 위젯
-// import '../features/board/widgets/template_fields.dart'; -> 게시판별 필수 입력 필드를 생성해주는 UI 위젯
+import '../features/board/models/post.dart';// -> 게시글 데이터 모델 (title, content, authorId, createdAt 등)
+import '../features/board/models/post_template.dart'; //-> 게시판 종류별로 다른 "작성 틀" 정의
+import '../features/board/models/board_category.dart'; //-> 자유/스펙공유/스터디/취준/기업후기 등 게시판 유형 정보
+import '../features/board/services/board_service.dart'; //-> 글 목록 조회, 작성/수정/삭제, 좋아요 등 게시판 비즈니스 로직
+import '../features/board/services/report_block_service.dart';// -> 신고/차단 기능 처리 (무관/위반 게시글 숨기기/삭제)
+import '../features/board/widgets/post_card.dart'; //-> 게시글 목록에서 한 개의 게시글을 카드 형태로 보여주는 위젯
+import '../features/board/widgets/template_fields.dart';// -> 게시판별 필수 입력 필드를 생성해주는 UI 위젯
 
 
 // ========= 캘린더 영역 =========
@@ -186,7 +188,7 @@ class AppRoutes {
 
     // --- Auth ---
     RouteNames.login:  (context) => const LoginScreen(),
-    RouteNames.signup: (context) => const SignupScreen(),
+    RouteNames.signup: (context) => const SignUpScreen(),
 
     // --- 홈(탭 루트) ---
     RouteNames.home:   (context) => const HomeScreen(),
@@ -259,6 +261,25 @@ class AppRoutes {
           settings: settings,
         );
 
+      case RouteNames.postList: {
+        final args = settings.arguments as Map<String, dynamic>?;
+
+        final boardId = args?['boardId'] as String?;
+        final title   = args?['title']   as String?;
+
+        if (boardId == null || title == null) {
+          return MaterialPageRoute(
+            builder: (_) => const ErrorScreen(unknownRouteName: 'postList args missing'),
+            settings: settings,
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => PostListScreen(boardId: boardId, title: title),
+          settings: settings,
+        );
+      }
+
+
     // ------------- 챌린지 상세 & 증빙 업로드 -------------
       case RouteNames.challengeDetail:
       // 예: 특정 챌린지 정보나 id 를 넘길 수 있음
@@ -269,6 +290,21 @@ class AppRoutes {
           ),
           settings: settings,
         );
+
+      case RouteNames.certificationHistory: {
+        final uid = settings.arguments as String?; // 또는 Map 받아서 uid 꺼내도 됨
+        if (uid == null) {
+          return MaterialPageRoute(
+            builder: (_) => const ErrorScreen(unknownRouteName: 'certificationHistory: uid missing'),
+            settings: settings,
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => CertificationHistoryScreen(userId: uid),
+          settings: settings,
+        );
+      }
+
 
       case RouteNames.proofCamera:
       // 예: 어떤 챌린지에 대한 인증인지 challengeId 등을 넘길 수도 있음

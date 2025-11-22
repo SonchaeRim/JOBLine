@@ -23,8 +23,8 @@ class _HomeShellState extends State<HomeShell> {
     HomeScreen(),
     BoardTabsScreen(),
     CalendarScreen(),
-    ChatListScreen(),
-    SettingScreen(),
+    //ChatListScreen(),
+   // SettingScreen(),
   ];
 
   // BottomNavBar에서 탭 누르면 이 함수가 실행돼서 index가 변화되어 UI 갱신
