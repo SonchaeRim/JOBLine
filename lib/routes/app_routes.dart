@@ -350,4 +350,14 @@ class AppRoutes {
         );
     }
   }
+        // 여기까지 왔다면 정의되지 않은 경로 → 공통 에러 화면으로 보냄
+    return MaterialPageRoute(
+      builder: (_) => ErrorScreen(
+        unknownRouteName: settings.name,
+      ),
+      settings: settings,
+    );
+  }
+}
+
 
