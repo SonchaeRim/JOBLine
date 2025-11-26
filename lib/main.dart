@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
       home: const HomeShell(),
 
 
-      initialRoute: '/home', // 시작 화면
+      initialRoute: '/home/settings/password-change', // 시작 화면
       routes: AppRoutes.routes,          // 라우트 매핑
     );
   }

@@ -24,7 +24,7 @@ class _HomeShellState extends State<HomeShell> {
     BoardTabsScreen(),
     CalendarScreen(),
     //ChatListScreen(),
-   // SettingScreen(),
+    // SettingScreen(),
   ];
 
   // BottomNavBar에서 탭 누르면 이 함수가 실행돼서 index가 변화되어 UI 갱신
@@ -60,30 +60,3 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
-import '../widgets/app_scaffold.dart';
-import '../../board/screens/board_tabs_screen.dart';
-import '../../calendar/screens/calendar_screen.dart';
-import '../../chat/screens/chat_list_screen.dart';
-import '../../settings/screens/setting_screen.dart';
-
-// HomeShell이 전체 탭 이동 로직을 관리
-// HomeShell이 현재 어떤 탭이 선택됐는지 index 저장
-class HomeShell extends StatefulWidget {
-  const HomeShell({super.key});
-
-  @override
-  State<HomeShell> createState() => _HomeShellState();
-}
-
-class _HomeShellState extends State<HomeShell> {
-  int _index = 0;
-
-  // 탭 index에 따라 보여줄 화면 5개
-  // 0: 홈, 1: 게시판, 2: 캘린더, 3: 채팅, 4: 설정
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    BoardTabsScreen(),
-    CalendarScreen(),
-    ChatListScreen(),
-    SettingScreen(),
-  ];
