@@ -2,6 +2,7 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:jobline/features/auth/screens/signup_screen.dart';
 import '../../../routes/route_names.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -118,6 +119,12 @@ class _LoginScreenState extends State<LoginScreen> {
           child: ElevatedButton(
             onPressed: () {
               //이동 로직
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SignUpScreen(),
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,

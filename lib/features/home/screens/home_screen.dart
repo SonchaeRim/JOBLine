@@ -7,7 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 /// 홈 탭 화면
 class HomeScreen extends StatelessWidget {
   final ValueChanged<int>? onTabChanged;
-  
+
   const HomeScreen({super.key, this.onTabChanged});
 
   // 현재 사용자 ID 가져오기
@@ -26,9 +26,9 @@ class HomeScreen extends StatelessWidget {
         children: [
           // 상단 헤더: 로고 + 커뮤니티
           _buildHeader(context),
-          
+
           const SizedBox(height: 24),
-          
+
           // XP Badge 섹션
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),

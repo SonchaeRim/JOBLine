@@ -285,10 +285,10 @@ class AppRoutes {
         // Map 형태: {'challenge': Challenge 객체, 'userId': String}
         // 또는 Challenge 객체 직접 전달 시 Map으로 감싸서 전달
         final args = settings.arguments;
-        
+
         Challenge? challenge;
         String? userId;
-        
+
         if (args is Map<String, dynamic>) {
           challenge = args['challenge'] as Challenge?;
           userId = args['userId'] as String?;
@@ -297,14 +297,14 @@ class AppRoutes {
           challenge = args;
           userId = null;
         }
-        
+
         if (challenge == null || userId == null) {
           return MaterialPageRoute(
             builder: (_) => const ErrorScreen(unknownRouteName: 'challengeDetail: challenge or userId missing'),
             settings: settings,
           );
         }
-        
+
         // null 체크 후 non-null 단언 (안전함 - 위에서 이미 체크함)
         return MaterialPageRoute(
           builder: (_) => ChallengeDetailScreen(
@@ -333,17 +333,17 @@ class AppRoutes {
       case RouteNames.proofCamera: {
         // arguments로 Map 형태로 {'challengeId': String, 'userId': String} 전달
         final args = settings.arguments as Map<String, dynamic>?;
-        
+
         final challengeId = args?['challengeId'] as String?;
         final userId = args?['userId'] as String?;
-        
+
         if (challengeId == null || userId == null) {
           return MaterialPageRoute(
             builder: (_) => const ErrorScreen(unknownRouteName: 'proofCamera: challengeId or userId missing'),
             settings: settings,
           );
         }
-        
+
         return MaterialPageRoute(
           builder: (_) => ProofCameraScreen(
             challengeId: challengeId,
@@ -385,7 +385,7 @@ class AppRoutes {
         );
 
       default:
-        // 정의되지 않은 경로 → 공통 에러 화면으로 보냄
+      // 정의되지 않은 경로 → 공통 에러 화면으로 보냄
         return MaterialPageRoute(
           builder: (_) => ErrorScreen(
             unknownRouteName: settings.name,
@@ -395,5 +395,4 @@ class AppRoutes {
     }
   }
 }
-
 
