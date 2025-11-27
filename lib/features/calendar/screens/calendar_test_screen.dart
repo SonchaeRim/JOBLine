@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'calendar_screen.dart';
 import '../../challenge/screens/challenge_list_screen.dart';
-import '../../xp/widgets/xp_badge.dart';
+import '../../home/widgets/xp_badge.dart';
 
 /// D 담당 기능 테스트용 화면 (임시)
 /// 이 화면은 테스트용이므로 나중에 삭제 가능

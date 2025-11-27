@@ -29,27 +29,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     if (_currentUserId == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('캘린더'),
-        ),
-        body: const Center(
-          child: Text('로그인이 필요합니다.'),
-        ),
+      // MainScreen에서 이미 Scaffold를 제공하므로 body만 반환
+      return const Center(
+        child: Text('로그인이 필요합니다.'),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('캘린더'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => _showAddScheduleScreen(),
-          ),
-        ],
-      ),
-      body: Column(
+    // MainScreen에서 이미 Scaffold와 AppBar를 제공하므로 body만 반환
+    // actions는 MainScreen에서 처리하거나 FloatingActionButton으로 대체 가능
+    return Column(
         children: [
           // 필터 및 달력 헤더
           _buildHeader(),
@@ -61,7 +49,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: _buildScheduleList(),
           ),
         ],
-      ),
     );
   }
 

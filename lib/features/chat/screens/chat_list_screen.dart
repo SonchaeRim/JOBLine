@@ -37,21 +37,8 @@ class ChatListScreen extends StatelessWidget {
       ),
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('채팅'),
-        centerTitle: false,
-        actions: [
-          IconButton(
-            tooltip: '새 채팅',
-            icon: const Icon(Icons.add_circle_outline),
-            onPressed: () {
-              Navigator.pushNamed(context, RouteNames.newChat);
-            },
-          ),
-        ],
-      ),
-      body: ListView.separated(
+    // MainScreen에서 이미 Scaffold와 AppBar를 제공하므로 body만 반환
+    return ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: dummyRooms.length,
         separatorBuilder: (_, __) => const Divider(height: 1),
@@ -94,7 +81,6 @@ class ChatListScreen extends StatelessWidget {
             },
           );
         },
-      ),
     );
   }
 }

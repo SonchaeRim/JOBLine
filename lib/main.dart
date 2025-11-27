@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'routes/app_routes.dart';             // 라우팅 설정
+import 'routes/route_names.dart';            // 라우트 이름 상수
 import 'core/theme/app_colors.dart';        // 색상 테마
 import 'core/theme/app_text_styles.dart';   // 텍스트 스타일
 import 'package:firebase_core/firebase_core.dart';
-
-import 'features/common/screens/home_screen.dart';
 
 // Flutter 앱 실행 진입점
 void main() async {
@@ -30,12 +29,9 @@ class MyApp extends StatelessWidget {
         colorSchemeSeed: AppColors.primary,
         textTheme: AppTextStyles.textTheme,
       ),
-
-      home: const HomeShell(),
-
-
-      initialRoute: '/home/settings/password-change', // 시작 화면
+      initialRoute: RouteNames.splash, // 시작 화면 (스플래시 화면)
       routes: AppRoutes.routes,          // 라우트 매핑
+      onGenerateRoute: AppRoutes.onGenerateRoute, // 동적 라우트 처리
     );
   }
 }

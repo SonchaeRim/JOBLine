@@ -2,6 +2,7 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../routes/route_names.dart';
 
 class LoginScreen extends StatefulWidget {
   //textfield처럼 입력 받고 화면 상태가 변할 때 사용
@@ -125,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text('로그인',
+            child: const Text('회원가입',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
@@ -147,6 +148,37 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
+        const SizedBox(height: 20),
+        
+        // 테스트용 로그인 버튼
+        SizedBox(
+          width: double.infinity,
+          height: 45,
+          child: OutlinedButton(
+            onPressed: () {
+              // 테스트용: 바로 홈 화면으로 이동
+              Navigator.pushReplacementNamed(context, RouteNames.home);
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.grey,
+              side: const BorderSide(color: Colors.grey),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.bug_report, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  '테스트 로그인',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ),
         const SizedBox(height: 50),
 
         ],

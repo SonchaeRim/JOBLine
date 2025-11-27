@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import '../features/challenge/screens/certification_history_screen.dart';
+import '../features/challenge/models/challenge.dart';
 import 'route_names.dart';
 
 import '../features/common/screens/splash_screen.dart'; // 앱 첫 실행 시 보여주는 스플래시 화면
 // 일정 시간 뒤에 항상 /login 으로 이동 (자동 로그인 기능 없음)
 
-import '../features/common/screens/home_screen.dart'; // 메인 홈 화면
-// 메인 홈 화면은 하단 BottomNavigationBar (게시판, 캘린더, 채팅, 챌린지, 프로필 등) 탭 전환만 담당함.
+import '../features/common/screens/main_screen.dart'; // 메인 화면 (탭 관리 + 네비게이션 바)
+// 메인 화면은 하단 BottomNavigationBar (게시판, 캘린더, 채팅, 챌린지, 프로필 등) 탭 전환만 담당함.
 // 실제 내용은 각 feature의 screen이 담당함.
 
 import '../features/common/screens/error_screen.dart'; // 에러 화면
@@ -191,7 +192,7 @@ class AppRoutes {
     RouteNames.signup: (context) => const SignUpScreen(),
 
     // --- 홈(탭 루트) ---
-    RouteNames.home:   (context) => const HomeScreen(),
+    RouteNames.home:   (context) => const MainScreen(),
 
     // --- 커뮤니티 (회원가입/변경 공용) ---
     RouteNames.categorySelect: (context) => const CategorySelectScreen(),
@@ -241,25 +242,23 @@ class AppRoutes {
     switch (settings.name) {
 
     // ------------- 게시판 상세/작성 -------------
-      case RouteNames.postDetail:
-      // arguments 로 Post 객체나 postId 를 받는다고 가정
-        final args = settings.arguments;
+      case RouteNames.postDetail: {
+        // arguments 로 Post 객체나 postId 를 받는다고 가정
+        final postId = settings.arguments as String?;
         return MaterialPageRoute(
-          builder: (_) => PostDetailScreen(
-            // TODO: 실제 생성자에 맞게 수정
-          ),
+          builder: (_) => PostDetailScreen(postId: postId),
           settings: settings,
         );
+      }
 
-      case RouteNames.postEditor:
-      // 새 글 작성(인자 없음) 또는 수정(기존 Post 전달) 둘 다 지원 가능
-        final args = settings.arguments;
+      case RouteNames.postEditor: {
+        // 새 글 작성(인자 없음) 또는 수정(기존 Post 전달) 둘 다 지원 가능
+        final postId = settings.arguments as String?;
         return MaterialPageRoute(
-          builder: (_) => PostEditorScreen(
-            // TODO: 실제 생성자에 맞게 수정
-          ),
+          builder: (_) => PostEditorScreen(postId: postId),
           settings: settings,
         );
+      }
 
       case RouteNames.postList: {
         final args = settings.arguments as Map<String, dynamic>?;
@@ -281,15 +280,40 @@ class AppRoutes {
 
 
     // ------------- 챌린지 상세 & 증빙 업로드 -------------
-      case RouteNames.challengeDetail:
-      // 예: 특정 챌린지 정보나 id 를 넘길 수 있음
+      case RouteNames.challengeDetail: {
+        // arguments로 Map 또는 Challenge 객체 직접 전달 가능
+        // Map 형태: {'challenge': Challenge 객체, 'userId': String}
+        // 또는 Challenge 객체 직접 전달 시 Map으로 감싸서 전달
         final args = settings.arguments;
+        
+        Challenge? challenge;
+        String? userId;
+        
+        if (args is Map<String, dynamic>) {
+          challenge = args['challenge'] as Challenge?;
+          userId = args['userId'] as String?;
+        } else if (args is Challenge) {
+          // Challenge 객체만 전달된 경우 (임시로 테스트용)
+          challenge = args;
+          userId = null;
+        }
+        
+        if (challenge == null || userId == null) {
+          return MaterialPageRoute(
+            builder: (_) => const ErrorScreen(unknownRouteName: 'challengeDetail: challenge or userId missing'),
+            settings: settings,
+          );
+        }
+        
+        // null 체크 후 non-null 단언 (안전함 - 위에서 이미 체크함)
         return MaterialPageRoute(
           builder: (_) => ChallengeDetailScreen(
-            // TODO: 실제 생성자에 맞게 수정
+            challenge: challenge!,
+            userId: userId!,
           ),
           settings: settings,
         );
+      }
 
       case RouteNames.certificationHistory: {
         final uid = settings.arguments as String?; // 또는 Map 받아서 uid 꺼내도 됨
@@ -306,15 +330,28 @@ class AppRoutes {
       }
 
 
-      case RouteNames.proofCamera:
-      // 예: 어떤 챌린지에 대한 인증인지 challengeId 등을 넘길 수도 있음
-        final args = settings.arguments;
+      case RouteNames.proofCamera: {
+        // arguments로 Map 형태로 {'challengeId': String, 'userId': String} 전달
+        final args = settings.arguments as Map<String, dynamic>?;
+        
+        final challengeId = args?['challengeId'] as String?;
+        final userId = args?['userId'] as String?;
+        
+        if (challengeId == null || userId == null) {
+          return MaterialPageRoute(
+            builder: (_) => const ErrorScreen(unknownRouteName: 'proofCamera: challengeId or userId missing'),
+            settings: settings,
+          );
+        }
+        
         return MaterialPageRoute(
           builder: (_) => ProofCameraScreen(
-            // TODO: 필요 시 인자 사용
+            challengeId: challengeId,
+            userId: userId,
           ),
           settings: settings,
         );
+      }
 
     // ------------- 채팅방 / 새 채팅 -------------
       case RouteNames.chat:
@@ -323,8 +360,14 @@ class AppRoutes {
           settings: settings,
         );
 
-      case RouteNames.chatRoom:
-        final args = settings.arguments as ChatRoomScreenArgs;
+      case RouteNames.chatRoom: {
+        final args = settings.arguments as ChatRoomScreenArgs?;
+        if (args == null) {
+          return MaterialPageRoute(
+            builder: (_) => const ErrorScreen(unknownRouteName: 'chatRoom args missing'),
+            settings: settings,
+          );
+        }
         return MaterialPageRoute(
           builder: (_) => ChatRoomScreen(
             roomId: args.roomId,
@@ -333,6 +376,7 @@ class AppRoutes {
           ),
           settings: settings,
         );
+      }
 
       case RouteNames.newChat:
         return MaterialPageRoute(
@@ -340,8 +384,8 @@ class AppRoutes {
           settings: settings,
         );
 
-
-        // 여기까지 왔다면 정의되지 않은 경로 → 공통 에러 화면으로 보냄
+      default:
+        // 정의되지 않은 경로 → 공통 에러 화면으로 보냄
         return MaterialPageRoute(
           builder: (_) => ErrorScreen(
             unknownRouteName: settings.name,
@@ -349,14 +393,6 @@ class AppRoutes {
           settings: settings,
         );
     }
-  }
-        // 여기까지 왔다면 정의되지 않은 경로 → 공통 에러 화면으로 보냄
-    return MaterialPageRoute(
-      builder: (_) => ErrorScreen(
-        unknownRouteName: settings.name,
-      ),
-      settings: settings,
-    );
   }
 }
 
