@@ -1,6 +1,6 @@
 plugins {
-    // Firebase 문서에서 준 줄
-    id("com.google.gms.google-services") version "4.4.4" apply false
+    // Firebase 문서에서 준 줄 (settings.gradle.kts와 버전 맞춤)
+    id("com.google.gms.google-services") version "4.3.15" apply false
 }
 
 allprojects {
