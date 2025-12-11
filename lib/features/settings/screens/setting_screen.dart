@@ -1,105 +1,395 @@
 import 'package:flutter/material.dart';
 import '../../../routes/route_names.dart';
-import '../../../routes/app_routes.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:jobline/features/auth/services/auth_service.dart';
 
-/// 설정 메인 화면 (임시)
-class SettingScreen extends StatelessWidget {
+class SettingScreen extends StatefulWidget {
   const SettingScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // MainScreen에서 이미 Scaffold와 AppBar를 제공하므로 body만 반환
-    return ListView(
-        children: [
-          // 프로필 정보 섹션
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Column(
+  State<SettingScreen> createState() => _SettingScreenState();
+}
+
+class _SettingScreenState extends State<SettingScreen> {
+  final AuthService _authService = AuthService();
+  bool _isLoading = true;
+  String _displayName = '사용자 이름';
+  String _displayId = 'user_id';
+
+  List<String> _certifications = []; // DB에서 로드될 예정
+  final String _currentCommunity = 'IT개발 • 데이터';
+  final String _currentRank = 'SILVER';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  // Firestore에서 사용자 프로필 정보 로드
+  Future<void> _loadUserProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (mounted) setState(() { _isLoading = false; });
+      return;
+    }
+
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data() as Map<String, dynamic>;
+
+        // 닉네임 및 ID 처리
+        final nickname = data['nickname'] ?? '닉네임 없음';
+        final userId = data['name'] ?? 'ID 없음';
+
+        // 자격증/수상 데이터 처리 (DB에 필드가 없으면 빈 리스트)
+        final List<String> loadedCertifications =
+            (data['certifications'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ?? [];
+
+        if (mounted) {
+          setState(() {
+            _displayName = nickname;
+            _displayId = userId;
+            _certifications = loadedCertifications;
+            _isLoading = false;
+          });
+        }
+      } else {
+        // 문서 없는 경우 처리
+        if (mounted) {
+          setState(() {
+            _displayName = user.email?.split('@').first ?? '사용자';
+            _displayId = user.email?.split('@').first ?? 'ID 없음';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("설정 화면 프로필 로드 오류: $e");
+      if (mounted) setState(() { _isLoading = false; });
+    }
+  }
+
+
+  // 메뉴 항목 위젯 (ListTile 디자인 대체)
+  Widget _buildMenuItem({
+    required String title,
+    String? trailingText,
+    VoidCallback? onTap,
+    bool isAction = true,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 16, color: Colors.black87),
+            ),
+            Row(
               children: [
-                CircleAvatar(
-                  radius: 40,
-                  child: Icon(Icons.person, size: 40),
+                if (trailingText != null)
+                  Text(
+                    trailingText,
+                    style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
+                  ),
+                if (isAction)
+                  const Icon(Icons.chevron_right, color: Colors.grey),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 프로필 카드 위젯
+  Widget _buildProfileCard() {
+    final String nickname = _displayName;
+    // 이메일 ID의 뒷 4자리를 추출 (DB에 별도 UID 4자리 필드가 없으므로 임시로 사용)
+    final String displaySuffix = _authService.currentUserId != null && _authService.currentUserId!.length > 4
+        ? _authService.currentUserId!.substring(_authService.currentUserId!.length - 4)
+        : '0000';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 5,
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 프로필 이미지 (임시)
+          Stack(
+            children: [
+              const CircleAvatar(
+                radius: 40,
+                backgroundColor: Colors.black12,
+                child: Icon(Icons.person, size: 50, color: Colors.white),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: const Text(
+                    '이미지 변경',
+                    style: TextStyle(fontSize: 10, color: Colors.white),
+                  ),
                 ),
-                SizedBox(height: 12),
-                Text(
-                  '사용자 이름',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(width: 15),
+          // 닉네임, 직무, 배지
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 닉네임과 임시 ID
+              Text(
+                '$nickname # $displaySuffix',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              // 직무/커뮤니티 (임시 값)
+              Text(
+                _currentCommunity,
+                style: const TextStyle(fontSize: 14, color: Colors.black54),
+              ),
+              const SizedBox(height: 8),
+              // 등급 배지
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.grey.shade400, Colors.grey.shade300],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(15),
                 ),
-                SizedBox(height: 4),
-                Text(
-                  '@user_id',
-                  style: TextStyle(color: Colors.grey),
+                child: Text(
+                  _currentRank,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 자격증/수상 정보 섹션
+  Widget _buildCertificatesSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: _certifications.isEmpty
+            ? [
+          // 자격증이 없을 때
+          Text(
+            '보유한 자격증이 없습니다.',
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+          ),
+        ]
+            : [
+          // 자격증이 있을 때: 리스트 표시 (DB 필드가 'certifications'라고 가정)
+          ..._certifications.map((cert) => Padding(
+            padding: const EdgeInsets.only(bottom: 6.0),
+            child: Row(
+              children: [
+                const Text('🏆', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    cert,
+                    style: const TextStyle(fontSize: 15, color: Colors.black87),
+                  ),
+                ),
+              ],
+            ),
+          )),
+          // 수상 경력 (임시)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Row(
+              children: [
+                const Text('🏅', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 8),
+                const Text(
+                  'SW 융합 해커톤 대회 [우수상] 수상',
+                  style: TextStyle(fontSize: 15, color: Colors.black87),
                 ),
               ],
             ),
           ),
-          const Divider(),
-          
-          // 계정 설정
-          ListTile(
-            leading: const Icon(Icons.account_circle),
-            title: const Text('계정'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: 계정 설정 화면
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.badge),
-            title: const Text('아이디 변경'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.pushNamed(context, RouteNames.idChange);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.lock),
-            title: const Text('비밀번호 변경'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.pushNamed(context, RouteNames.passwordChange);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.edit),
-            title: const Text('닉네임 변경'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.pushNamed(context, RouteNames.nicknameChange);
-            },
-          ),
-          const Divider(),
-          
-          // 게시물
-          ListTile(
-            leading: const Icon(Icons.article),
-            title: const Text('내가 쓴 게시물'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.pushNamed(context, RouteNames.myPosts);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.comment),
-            title: const Text('내가 쓴 댓글'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.pushNamed(context, RouteNames.myComments);
-            },
-          ),
-          const Divider(),
-          
-          // 커뮤니티
-          ListTile(
-            leading: const Icon(Icons.group),
-            title: const Text('커뮤니티 변경'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.pushNamed(context, RouteNames.communityChange);
-            },
-          ),
         ],
+      ),
+    );
+  }
+
+  // 섹션 제목과 구분선
+  Widget _buildSectionHeader(String title) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+        const Divider(color: Colors.black, thickness: 1.0),
+        Padding(
+          padding: const EdgeInsets.only(top: 15.0, bottom: 5.0),
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 로그아웃 로직 (옵션)
+  /*Future<void> _signOut() async {
+    try {
+      await _authService.signOut();
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          RouteNames.login,
+              (Route<dynamic> route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그아웃에 실패했습니다.')),
+        );
+      }
+    }
+  }
+*/
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 0,
+        elevation: 0,
+        backgroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('내 프로필', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 15),
+
+            _buildProfileCard(),
+
+            _buildCertificatesSection(),
+
+            // 계정 섹션
+            _buildSectionHeader('계정'),
+
+            _buildMenuItem(
+              title: '아이디',
+              trailingText: _displayId,
+              isAction: false,
+            ),
+            const Divider(color: Colors.black12, height: 1),
+
+            _buildMenuItem(
+              title: '비밀번호 변경',
+              onTap: () {
+                Navigator.pushNamed(context, RouteNames.passwordChange);
+              },
+            ),
+            const Divider(color: Colors.black12, height: 1),
+
+            _buildMenuItem(
+              title: '닉네임 변경',
+              onTap: () {
+                Navigator.pushNamed(context, RouteNames.nicknameChange);
+              },
+            ),
+            const Divider(color: Colors.black12, height: 1),
+
+            // 게시물 섹션
+            _buildSectionHeader('게시물'),
+
+            _buildMenuItem(
+              title: '내가 쓴 게시물',
+              onTap: () {
+                Navigator.pushNamed(context, RouteNames.myPosts);
+              },
+            ),
+            const Divider(color: Colors.black12, height: 1),
+
+            _buildMenuItem(
+              title: '내가 쓴 댓글',
+              onTap: () {
+                Navigator.pushNamed(context, RouteNames.myComments);
+              },
+            ),
+            const Divider(color: Colors.black12, height: 1),
+
+            // 커뮤니티 섹션
+            _buildSectionHeader('커뮤니티'),
+
+            _buildMenuItem(
+              title: '커뮤니티 변경',
+              onTap: () {
+                Navigator.pushNamed(context, RouteNames.communityChange);
+              },
+            ),
+            const Divider(color: Colors.black12, height: 1),
+
+            // 로그아웃 버튼 (추가)
+            _buildMenuItem(
+              title: '로그아웃',
+              //onTap: _signOut,
+              isAction: false,
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
     );
   }
 }
-

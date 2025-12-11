@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class PasswordChangeScreen extends StatefulWidget {
   const PasswordChangeScreen({super.key});
@@ -8,11 +10,13 @@ class PasswordChangeScreen extends StatefulWidget {
 }
 
 class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
+  final User? _currentUser = FirebaseAuth.instance.currentUser; // 현재 로그인된 사용자 정보
   final TextEditingController oldPwController = TextEditingController();
   final TextEditingController newPwController = TextEditingController();
   final TextEditingController confirmPwController = TextEditingController();
 
   String? _errorText;
+  bool _isLoading = false;
 
   // 비밀번호 조건 체크 (5자리 이상, 특수문자 1개 이상)
   bool _validatePassword(String password) {
@@ -20,15 +24,21 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
     return password.length >= 5 && specialChar.hasMatch(password);
   }
 
-  void _onConfirmPressed() {
+  void _onConfirmPressed() async {
+    final oldPw = newPwController.text;
     final newPw = newPwController.text;
     final confirmPw = confirmPwController.text;
 
+    // 1. 유효성 검사
     setState(() {
-      if (!_validatePassword(newPw)) {
+      if (oldPw.isEmpty) {
+        _errorText = "기존 비밀번호를 입력해주세요.";
+      } else if (!_validatePassword(newPw)) {
         _errorText = "비밀번호 조건을 충족하지 않습니다.";
       } else if (newPw != confirmPw) {
         _errorText = "새 비밀번호와 확인이 일치하지 않습니다.";
+      } else if (oldPw == newPw) {
+        _errorText = "기존 비밀번호와 새 비밀번호가 동일합니다.";
       } else {
         _errorText = null;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -36,6 +46,53 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
         );
       }
     });
+
+    if (_errorText != null) return; // 오류가 있으면 종료
+
+    try {
+      // 2. 재인증 (Re-authenticate): 기존 비밀번호가 맞는지 확인
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: _currentUser!.email!, // 현재 로그인된 사용자의 이메일 사용
+        password: oldPw,
+      );
+
+      await _currentUser!.reauthenticateWithCredential(credential);
+
+      // 3. 비밀번호 업데이트 (Update Password)
+      await _currentUser!.updatePassword(newPw);
+
+      // 성공 처리 및 화면 종료
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("비밀번호가 성공적으로 변경되었습니다.")),
+        );
+        Navigator.pop(context); // 이전 화면으로 돌아가기
+      }
+
+    } on FirebaseAuthException catch (e) {
+      // 4. Firebase 오류 처리 (재인증 실패 시)
+      String message;
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        message = '기존 비밀번호가 일치하지 않습니다.';
+      } else if (e.code == 'requires-recent-login') {
+        message = '보안상 재로그인이 필요합니다. 앱을 다시 시작하여 로그인해주세요.';
+      } else {
+        message = '비밀번호 변경에 실패했습니다: ${e.message}';
+      }
+
+      setState(() {
+        _errorText = message;
+      });
+
+    } catch (e) {
+      setState(() {
+        _errorText = "알 수 없는 오류가 발생했습니다: $e";
+      });
+    } finally {
+      setState(() {
+        _isLoading = false; // 로딩 종료
+      });
+    }
   }
 
   @override
