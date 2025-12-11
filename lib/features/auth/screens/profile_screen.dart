@@ -1,6 +1,9 @@
 //닉네임, 이메일, 프로필 이미지, 한 줄 소개 등 표시용 위젯
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:jobline/features/auth/services/auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -10,16 +13,72 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // 1. 자격증 보유 여부를 확인하는 리스트 (초기에는 비어있음)
+  final AuthService _authService = AuthService();
+  // 로그인된 사용자 정보 (Firebase Auth)
+  User? _currentUser;
+  // Firestore에서 가져온 사용자 데이터
+  Map<String, dynamic>? _userData;
+  // 데이터 로딩 상태
+  bool _isLoading = true;
+  //  자격증 보유 여부를 확인하는 리스트 (초기에는 비어있음)
   List<String> _certifications = [];
   // List<String> _certifications = ['XX 국가 기술 자격증 보유', 'OO 국가 기술 자격증 보유']; // 보유 시 테스트용
 
-  // 2. 임시 사용자 데이터 (나중에 서버에서 받아올 값)
-  final String _currentUserId = 'UserID';
-  final String _currentNickname = '취뽀';
-  final String _currentJob = 'IT개발';
-  final String _currentCommunity = 'IT개발 • 데이터';
-  final String _currentRank = 'SILVER';
+  //  임시 사용자 데이터 (나중에 서버에서 받아올 값)
+  //final String _currentUserId = 'UserID';
+  //final String _currentNickname = '취뽀';
+  //final String _currentJob = 'IT개발';
+  //final String _currentCommunity = 'IT개발 • 데이터';
+  //final String _currentRank = 'SILVER';
+
+  // 현재 로그인된 사용자를 확인하고,
+  // 해당 사용자의 UID를 사용하여 Firestore에서 프로필 정보를 가져오는 로직
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile(); // 사용자 프로필 로딩 함수 호출
+  }
+
+  Future<void> _loadUserProfile() async {
+    // ... (이전에 제공해 드린 Firebase 데이터 로딩 로직)
+    User? authUser = FirebaseAuth.instance.currentUser;
+    if (authUser == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      DocumentSnapshot<Map<String, dynamic>> doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(authUser.uid)
+          .get();
+
+      if (doc.exists) {
+        // ... (setState로 데이터 업데이트)
+        setState(() {
+          _currentUser = authUser;
+          _userData = doc.data();
+          _isLoading = false;
+        });
+      } else {
+        // ... (문서 없을 때 처리)
+        setState(() {
+          _currentUser = authUser;
+          _isLoading = false;
+        });
+        debugPrint("Firestore에 사용자 문서가 없습니다.");
+      }
+
+    } catch (e) {
+      // ... (오류 처리)
+      debugPrint("프로필 로드 오류: $e");
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   // 일반 메뉴 항목 위젯 (ListTile 스타일)
   Widget _buildMenuItem({
@@ -58,6 +117,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // 프로필 카드 위젯
   Widget _buildProfileCard() {
+    final String nickname = _userData?['nickname'] ?? '닉네임';
+    // ID의 뒷자리 4개를 표시하기 위한 임시 로직 (원래는 별도의 필드를 사용해야 함)
+    final String displayId = (_currentUser?.uid?.length ?? 0) > 4
+        ? _currentUser!.uid!.substring(_currentUser!.uid!.length - 4)
+        : '0000';
+
+    //임시 데이터
+    final String currentCommunity = 'IT개발 • 데이터';
+    final String currentRank = 'SILVER';
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -104,15 +173,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 닉네임과 임시 ID
+              // 닉네임과 ID
               Text(
-                '$_currentNickname # 0000',
+                '$nickname # $displayId', // UID 뒷 4자리
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               // 직무/커뮤니티
               Text(
-                _currentCommunity,
+                currentCommunity,
                 style: const TextStyle(fontSize: 14, color: Colors.black54),
               ),
               const SizedBox(height: 8),
@@ -128,7 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Text(
-                  _currentRank,
+                  currentRank,
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -246,7 +315,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // 아이디 (읽기 전용 값 표시)
               _buildMenuItem(
                 title: '아이디',
-                trailingText: _currentUserId, // 나중에 사용자 ID가 로드될 영역
+                trailingText: _currentUser?.email ?? '로그인 필요', // 나중에 사용자 ID가 로드될 영역
                 isAction: false, // 아이디는 변경 항목이 아니므로 화살표 제거
                 onTap: () {
                   // 아이디는 보통 변경 불가

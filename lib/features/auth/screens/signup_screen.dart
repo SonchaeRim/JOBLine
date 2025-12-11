@@ -1,6 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:jobline/features/community/screens/category_select_screen.dart';
-
+import 'package:jobline/features/auth/services/auth_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -17,6 +18,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController idController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
 
   bool _isButtonEnabled() {
     return nicknameController.text.isNotEmpty &&
@@ -171,14 +173,41 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       height: 50,
                       child: ElevatedButton(
                         onPressed: _isButtonEnabled()
-                            ? () {
+                            ? () async { // async 키워드 추가
                           if (_formKey.currentState!.validate()) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const CategorySelectScreen(),
-                              ),
-                            );
+
+                            try {
+                              await _authService.signUpWithEmail(
+                                email: emailController.text,
+                                password: passwordController.text,
+                                name: idController.text, // 아이디를 name 필드에 저장
+                                nickname: nicknameController.text, // 닉네임을 nickname 필드에 저장
+                              );
+
+                              // 회원가입 성공 시 다음 화면으로 이동
+                              if (context.mounted) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const CategorySelectScreen(),
+                                  ),
+                                );
+                              }
+                            } on FirebaseException catch (e) { // 해결된 FirebaseException 사용
+                              // Firebase 관련 오류 처리
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('회원가입 오류: ${e.message ?? "알 수 없는 Firebase 오류"}')),
+                                );
+                              }
+                            } catch (e) {
+                              // 기타 알 수 없는 오류 처리
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('알 수 없는 오류 발생: $e')),
+                                );
+                              }
+                            }
                           }
                         }
                             : null,

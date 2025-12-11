@@ -1,9 +1,11 @@
 //이메일/비밀번호 TextField + 로그인 버튼 + "회원가입" 이동 버튼
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:jobline/features/auth/screens/signup_screen.dart';
 import '../../../routes/route_names.dart';
+import '../../auth/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   //textfield처럼 입력 받고 화면 상태가 변할 때 사용
@@ -16,6 +18,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController idController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
   bool _isPasswordVisible = false; //비번 숨김처리
   bool _isLoginChecked = false; //자동로그인 체크
 
@@ -95,8 +98,62 @@ class _LoginScreenState extends State<LoginScreen> {
               width: double.infinity, //버튼 너비 넓게
                 height: 50,
               child: ElevatedButton(
-                onPressed: () {
-                  //이동 로직
+                onPressed: () async { // 비동기 함수(async)
+                  // 폼 유효성 검사를 대신할 간단한 입력 확인
+                  if (idController.text.isEmpty || passwordController.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('아이디와 비밀번호를 모두 입력해주세요.')),
+                    );
+                    return;
+                  }
+                  // 1. 아이디를 사용하여 Firestore에서 이메일 주소를 찾습니다.
+                  String? email = await _authService.getEmailByUsername(idController.text);
+
+                  if (email == null) {
+                    // 아이디가 Firestore에 없는 경우
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('존재하지 않는 아이디입니다.')),
+                      );
+                    }
+                    return;
+                  }
+                  try {
+                    // 1. 로그인 시도 (Firebase Auth)
+                    await _authService.signInWithEmail(
+                      email: email,
+                      password: passwordController.text,
+                    );
+
+                    // 2. 로그인 성공 시 처리
+                    if (context.mounted) {
+                      // MainScreen 또는 홈 화면으로 이동 (RouteNames.home 사용)
+                      // pushReplacementNamed를 사용하여 로그인 화면 스택 제거
+                      Navigator.pushReplacementNamed(context, RouteNames.home);
+                    }
+
+                  } on FirebaseException catch (e) {
+                    // 3. Firebase 관련 오류 처리 (잘못된 비밀번호, 사용자 없음 등)
+                    if (context.mounted) {
+                      String errorMessage = '로그인 실패';
+                      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
+                        errorMessage = '아이디 또는 비밀번호가 일치하지 않습니다.';
+                      } else {
+                        errorMessage = e.message ?? '알 수 없는 오류가 발생했습니다.';
+                      }
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(errorMessage)),
+                      );
+                    }
+                  } catch (e) {
+                    // 4. 기타 알 수 없는 오류 처리
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('예기치 않은 오류가 발생했습니다.')),
+                      );
+                    }
+                  }
                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
@@ -156,42 +213,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         const SizedBox(height: 20),
-        
-        // 테스트용 로그인 버튼
-        SizedBox(
-          width: double.infinity,
-          height: 45,
-          child: OutlinedButton(
-            onPressed: () {
-              // 테스트용: 바로 홈 화면으로 이동
-              Navigator.pushReplacementNamed(context, RouteNames.home);
-            },
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.grey,
-              side: const BorderSide(color: Colors.grey),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.bug_report, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  '테스트 로그인',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 50),
-
         ],
         ),
       ),
     );
   }
 }
-
