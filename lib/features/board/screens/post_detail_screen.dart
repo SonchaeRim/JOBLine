@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-/// 게시글 상세 화면 (임시)
-class PostDetailScreen extends StatelessWidget {
-  final String? postId; // 게시글 ID (임시로 nullable)
+class PostDetailScreen extends StatefulWidget {
+  final String? postId;
 
   const PostDetailScreen({
     super.key,
@@ -10,126 +11,266 @@ class PostDetailScreen extends StatelessWidget {
   });
 
   @override
+  State<PostDetailScreen> createState() => _PostDetailScreenState();
+}
+
+class _PostDetailScreenState extends State<PostDetailScreen> {
+  final _commentController = TextEditingController();
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitComment() async {
+    print('▶ _submitComment pressed');
+
+    final text = _commentController.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('댓글을 입력해 주세요.')),
+      );
+      return;
+    }
+    if (widget.postId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('잘못된 게시글입니다.')),
+      );
+      return;
+    }
+
+    try {
+      final postId = widget.postId!;
+      final user = FirebaseAuth.instance.currentUser;
+
+      // -------- 기본값 -----------
+      String authorName = '익명';
+      String? authorId;
+
+      if (user != null) {
+        authorId = user.uid;
+
+        // --------  users 컬렉션에서 내 프로필 가져오기  ------------
+        final profileSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (profileSnap.exists) {
+          final profile = profileSnap.data()!;
+          // nickname 우선, 없으면 name, 둘 다 없으면 익명
+          authorName = (profile['nickname'] ?? profile['name'] ?? '익명') as String;
+        }
+      }
+
+      // ----------------  댓글 저장할 때 author 정보 같이 넣기 ---------------
+      await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(postId)
+          .collection('comments')
+          .add({
+        'content': text,
+        'createdAt': FieldValue.serverTimestamp(),
+        'authorId': authorId,      // uid
+        'authorName': authorName,  // users 컬렉션에서 가져온 닉네임
+      });
+
+      print('✅ comment saved');
+      _commentController.clear();
+    } catch (e) {
+      print('🔥 comment save error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('댓글 저장 중 오류: $e')),
+      );
+    }
+  }
+
+
+  @override
   Widget build(BuildContext context) {
-    // TODO: postId로 실제 게시글 데이터 가져오기
-    
+    if (widget.postId == null) {
+      return const Scaffold(
+        body: Center(child: Text('잘못된 게시글입니다.')),
+      );
+    }
+
+    final postDocRef =
+    FirebaseFirestore.instance.collection('posts').doc(widget.postId);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('게시글 상세'),
         actions: [
           IconButton(
             icon: const Icon(Icons.more_vert),
-            onPressed: () {
-              // TODO: 수정/삭제 메뉴
-            },
+            onPressed: () {},
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 작성자 정보
-            Row(
+      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: postDocRef.snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const Center(child: Text('삭제되었거나 없는 게시글입니다.'));
+          }
+
+          final data = snapshot.data!.data()!;
+          final title = data['title'] ?? '';
+          final content = data['content'] ?? '';
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const CircleAvatar(
-                  radius: 20,
-                  child: Icon(Icons.person),
-                ),
-                const SizedBox(width: 12),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // 작성자 섹션 (임시)
+                Row(
                   children: [
-                    Text(
-                      '작성자 이름',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    const CircleAvatar(
+                      radius: 20,
+                      child: Icon(Icons.person),
                     ),
-                    Text(
-                      '2024-01-15 10:30',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '작성자 이름',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          '작성 시간은 나중에',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.favorite_border),
+                      onPressed: () {},
                     ),
                   ],
                 ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.favorite_border),
-                  onPressed: () {
-                    // TODO: 좋아요 기능
-                  },
-                ),
-              ],
-            ),
-            const Divider(),
-            
-            // 제목
-            const Text(
-              '게시글 제목',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // 본문
-            const Text(
-              '게시글 내용이 여기에 표시됩니다.\n\n본문 내용...',
-              style: TextStyle(fontSize: 16, height: 1.5),
-            ),
-            const SizedBox(height: 24),
-            
-            // 첨부파일 (있는 경우)
-            // TODO: 첨부파일 표시
-            
-            const Divider(),
-            
-            // 댓글 섹션
-            const Text(
-              '댓글 (0)',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            
-            // 댓글 입력창
-            Row(
-              children: [
-                const Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: '댓글을 입력하세요...',
-                      border: OutlineInputBorder(),
-                    ),
+                const Divider(),
+
+                // 제목
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: () {
-                    // TODO: 댓글 작성
+                const SizedBox(height: 16),
+
+                // 본문
+                Text(
+                  content,
+                  style: const TextStyle(fontSize: 16, height: 1.5),
+                ),
+                const SizedBox(height: 24),
+
+                const Divider(),
+
+                const Text(
+                  '댓글',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // 댓글 입력
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _commentController,
+                        decoration: const InputDecoration(
+                          hintText: '댓글을 입력하세요...',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.send),
+                      onPressed: _submitComment, //
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // 댓글 목록
+                // 댓글 목록
+                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: postDocRef
+                      .collection('comments')
+                      .orderBy('createdAt', descending: false)
+                      .snapshots(),
+                  builder: (context, commentSnap) {
+                    if (commentSnap.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    }
+
+                    final docs = commentSnap.data?.docs ?? [];
+
+                    if (docs.isEmpty) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text(
+                            '첫 댓글을 남겨보세요!',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: docs.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, i) {
+                        final c = docs[i].data();
+
+                        final text = c['content'] ?? '';
+                        final authorName = c['authorName'] ?? '익명';
+
+                        final ts = c['createdAt'] as Timestamp?;
+                        String timeText = '';
+                        if (ts != null) {
+                          final dt = ts.toDate();
+                          timeText =
+                          '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
+                              '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+                        }
+
+                        return ListTile(
+                          title: Text(text),                       // 댓글 내용
+                          subtitle: Text('$authorName · $timeText'),
+                        );
+                      },
+                    );
                   },
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            
-            // 댓글 목록
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32.0),
-                child: Text(
-                  '댓글이 없습니다.',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 }
-
