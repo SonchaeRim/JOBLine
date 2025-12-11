@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../routes/route_names.dart';
 
 //게시판 별 글 목록 화면
 class PostListScreen extends StatelessWidget {
@@ -65,20 +66,30 @@ class PostListScreen extends StatelessWidget {
                 // 본문 한 줄만, 넘치면 ... 처리
                 subtitle: Text(p['content'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
 
-                // 항목 탭하면 나중에 상세 화면으로 이동할 예정
+                // 항목 탭하면 나중에 상세 화면으로 이동
                 onTap: () {
-                  // TODO: post_detail_screen으로 이동
-                  // Navigator.pushNamed(context, RouteNames.postDetail, arguments: p['id']);
+                  Navigator.pushNamed(
+                    context,
+                    RouteNames.postDetail,
+                    arguments: p['id'],   // ← 문서 id
+                  );
                 },
               );
             },
           );
         },
       ),
-      // 우하단 “글 작성” 버튼: 눌렀을 때 작성 화면으로 이동하도록 연결 예정
+      // 우하단 “글 작성” 버튼: 눌렀을 때 작성 화면으로 이동하도록 연결
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // TODO: post_editor_screen으로 이동
+          Navigator.pushNamed(
+            context,
+            RouteNames.postEditor,
+            arguments: {
+              'boardId': boardId, // 이 화면이 가진 게시판 id
+              'postId': null,     // 새 글
+            },
+          );
         },
         label: const Text('✍️ 게시글 작성하기'),
       ),

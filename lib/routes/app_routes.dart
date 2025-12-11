@@ -252,13 +252,29 @@ class AppRoutes {
       }
 
       case RouteNames.postEditor: {
-        // 새 글 작성(인자 없음) 또는 수정(기존 Post 전달) 둘 다 지원 가능
-        final postId = settings.arguments as String?;
+        // arguments: {'boardId': String, 'postId': String?}
+        final args = settings.arguments as Map<String, dynamic>?;
+
+        final boardId = args?['boardId'] as String?;
+        final postId  = args?['postId'] as String?;
+
+        if (boardId == null) {
+          return MaterialPageRoute(
+            builder: (_) => const ErrorScreen(unknownRouteName: 'postEditor: boardId missing'),
+            settings: settings,
+          );
+        }
+
         return MaterialPageRoute(
-          builder: (_) => PostEditorScreen(postId: postId),
+          builder: (_) => PostEditorScreen(
+            boardId: boardId,
+            postId: postId,
+          ),
           settings: settings,
         );
       }
+
+
 
       case RouteNames.postList: {
         final args = settings.arguments as Map<String, dynamic>?;
