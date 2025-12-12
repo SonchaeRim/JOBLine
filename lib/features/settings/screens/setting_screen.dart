@@ -3,8 +3,10 @@ import '../../../routes/route_names.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jobline/features/auth/services/auth_service.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:jobline/features/auth/services/profile_service.dart';
 import 'dart:io'; // File 사용을 위해 추가
 
 class SettingScreen extends StatefulWidget {
@@ -16,6 +18,7 @@ class SettingScreen extends StatefulWidget {
 
 class _SettingScreenState extends State<SettingScreen> {
   final AuthService _authService = AuthService();
+  final ProfileService _profileService = ProfileService();
   bool _isLoading = true;
   String _displayName = '사용자 이름';
   String _displayId = 'user_id';
@@ -83,54 +86,44 @@ class _SettingScreenState extends State<SettingScreen> {
   // 이미지 선택 및 업로드 로직 추가
   Future<void> _pickAndUploadImage() async {
     final picker = ImagePicker();
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) {
-      _showSnackbar('로그인이 필요합니다.');
-      return;
-    }
-
-    // 1. 이미지 선택
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-    if (pickedFile == null) return; // 이미지 선택 취소 시 종료
+    if (pickedFile == null) return;
 
-    if (mounted) setState(() { _isLoading = true; }); // 로딩 시작
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
-      final file = File(pickedFile.path);
-      final fileName = 'profile_image_${user.uid}.jpg';
-      final storageRef = FirebaseStorage.instance.ref().child('user_profiles').child(fileName);
+      // 1) 갤러리 파일을 앱의 temp 폴더로 복사
+      final tempDir = await getTemporaryDirectory();
+      final newPath =
+          "${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg";
+      final copiedFile = await File(pickedFile.path).copy(newPath);
 
-      // 2. Firebase Storage에 업로드
-      await storageRef.putFile(file);
+      // 2) ProfileService 업로드
+      final imageUrl = await _profileService.uploadProfileImage(copiedFile);
 
-      // 3. 다운로드 URL 획득
-      final downloadUrl = await storageRef.getDownloadURL();
-
-      // 4. Firestore에 URL 업데이트
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'profileImageUrl': downloadUrl,
-      });
-
-      // 5. 상태 업데이트 및 성공 메시지
       if (mounted) {
         setState(() {
-          _profileImageUrl = downloadUrl;
+          _profileImageUrl = imageUrl;
           _isLoading = false;
         });
-        _showSnackbar('프로필 이미지가 성공적으로 변경되었습니다.');
       }
-    } on FirebaseException catch (e) {
-      debugPrint('Firebase 이미지 업로드/업데이트 오류: $e');
-      _showSnackbar('이미지 변경에 실패했습니다. (${e.message})');
-      if (mounted) setState(() { _isLoading = false; });
+
+      _showSnackbar("프로필 이미지가 성공적으로 변경되었습니다.");
     } catch (e) {
-      debugPrint('일반 이미지 업로드 오류: $e');
-      _showSnackbar('이미지 변경 중 알 수 없는 오류가 발생했습니다.');
-      if (mounted) setState(() { _isLoading = false; });
+      debugPrint("이미지 업로드 오류: $e");
+      _showSnackbar("이미지 업로드에 실패했습니다.");
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
+
 
   // 스낵바 표시 유틸리티
   void _showSnackbar(String message) {
@@ -139,6 +132,34 @@ class _SettingScreenState extends State<SettingScreen> {
         SnackBar(content: Text(message)),
       );
     }
+  }
+
+  // 로그아웃 확인 다이얼로그 표시 함수 추가
+  void _showLogoutConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('로그아웃 확인'),
+          content: const Text('정말로 로그아웃 하시겠습니까?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('취소', style: TextStyle(color: Colors.grey)),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('로그아웃', style: TextStyle(color: Colors.red)),
+              onPressed: () {
+                Navigator.of(context).pop(); // Dialog 닫기
+                _signOut(); // 로그아웃 로직 실행
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // 메뉴 항목 위젯 (ListTile 디자인 대체)
@@ -460,7 +481,7 @@ class _SettingScreenState extends State<SettingScreen> {
             // 로그아웃 버튼
             _buildMenuItem(
               title: '로그아웃',
-              //onTap: _signOut,
+              onTap: _showLogoutConfirmationDialog,
               isAction: false,
             ),
             const SizedBox(height: 20),
