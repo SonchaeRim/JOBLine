@@ -22,7 +22,7 @@ class AuthService {
   Future<User?> signUpWithEmail({
     required String email,
     required String password,
-    required String name, // 사용자 이름 (회원가입 시 필수로 받음)
+    required String loginId, // 사용자 이름 (회원가입 시 필수로 받음)
     required String nickname, // 사용자 닉네임 (회원가입 시 필수로 받음)
   }) async {
     try {
@@ -40,8 +40,10 @@ class AuthService {
         await _firestore.collection('users').doc(user.uid).set({
           'uid': user.uid,
           'email': user.email,
-          'name': name,
+          'loginId': loginId,
           'nickname': nickname,
+          'nicknameLower': nickname.toLowerCase(), // 닉네임 검색용
+          'tag': '0000',  // 중복 구별용, 나중에 자동 발급으로 변경
           'birth': '', // 이미지에서 본 빈 필드 초기화
           'pwd': '', // 비밀번호 해시는 Auth에 저장되므로, 여기는 빈 문자열로 초기화
           'createdAt': Timestamp.now(), // 생성 시각 추가 (선택 사항)
@@ -108,7 +110,10 @@ class AuthService {
     // 변경할 필드만 담는 맵 생성
     Map<String, dynamic> updateData = {};
     if (name != null) updateData['name'] = name;
-    if (nickname != null) updateData['nickname'] = nickname;
+    if (nickname != null) {
+      updateData['nickname'] = nickname;
+      updateData['nicknameLower'] = nickname.toLowerCase();
+    }
     if (birth != null) updateData['birth'] = birth;
 
     // 만약 업데이트할 데이터가 없다면 종료
@@ -130,7 +135,7 @@ class AuthService {
     try {
       // Firestore의 'users' 컬렉션에서 'name' 필드가 입력된 username과 일치하는 문서를 찾음
       QuerySnapshot result = await _firestore.collection('users')
-          .where('name', isEqualTo: username) // SignUpScreen에서 idController.text를 'name' 필드에 저장했음
+          .where('loginId', isEqualTo: username) // SignUpScreen에서 idController.text를 'name' 필드에 저장했음
           .limit(1)
           .get();
 

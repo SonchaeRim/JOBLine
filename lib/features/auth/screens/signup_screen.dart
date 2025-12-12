@@ -180,7 +180,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               await _authService.signUpWithEmail(
                                 email: emailController.text,
                                 password: passwordController.text,
-                                name: idController.text, // 아이디를 name 필드에 저장
+                                loginId: idController.text,
                                 nickname: nicknameController.text, // 닉네임을 nickname 필드에 저장
                               );
 

@@ -1,104 +1,105 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../routes/route_names.dart';
+import '../services/chat_service.dart';
+import '../models/chat_room.dart';
 import 'chat_room_screen.dart';
-import 'new_chat_screen.dart'; // (혹시 필요하면)
 
-/// 채팅방 리스트 화면
 class ChatListScreen extends StatelessWidget {
   const ChatListScreen({super.key});
 
+  String _roomTitleForMe(ChatRoom room, String myUid) {
+    if (!room.isGroup) {
+      for (final uid in room.memberIds) {
+        if (uid != myUid) {
+          final nick = room.memberNicknames[uid];
+          if (nick is String && nick.isNotEmpty) return nick;
+        }
+      }
+      return '채팅';
+    }
+    return room.title.isEmpty ? '그룹 채팅' : room.title;
+  }
+
+
   @override
   Widget build(BuildContext context) {
-    // TODO: 나중에 Firestore/ChatService 에서 채팅방 목록 받아오도록 교체
-    final dummyRooms = [
-      _ChatRoomItem(
-        roomId: 'room1',
-        title: '신태규',
-        lastMessage: '과제 해야지',
-        time: '오전 09:32',
-        isGroup: false,
-        color: Colors.blue[100],
-      ),
-      _ChatRoomItem(
-        roomId: 'room2',
-        title: '공부 인증방 4',
-        lastMessage: '오늘 인증 올려주세요',
-        time: '오전 10:12',
-        isGroup: true,
-        color: Colors.yellow[100],
-      ),
-      _ChatRoomItem(
-        roomId: 'room3',
-        title: '정보 공유방 100',
-        lastMessage: '링크 공유해드릴게요',
-        time: '어제',
-        isGroup: true,
-        color: Colors.green[100],
-      ),
-    ];
+    final chatService = ChatService();
+    final myUid = FirebaseAuth.instance.currentUser!.uid;
 
-    // MainScreen에서 이미 Scaffold와 AppBar를 제공하므로 body만 반환
-    return ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: dummyRooms.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final room = dummyRooms[index];
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: room.color ?? Colors.grey[300],
-              child: Text(
-                room.title.characters.first,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            title: Text(
-              room.title,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text(
-              room.lastMessage,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: Text(
-              room.time,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Colors.grey),
-            ),
-            onTap: () {
-              Navigator.pushNamed(
-                context,
-                RouteNames.chatRoom,
-                arguments: ChatRoomScreenArgs(
-                  roomId: room.roomId,
-                  roomTitle: room.title,
-                  isGroup: room.isGroup,
+    return Scaffold(
+      // MainScreen이 Scaffold 제공 안 하는 구조면 이 Scaffold 유지.
+      // 이미 제공한다면 Scaffold 제거하고 body만 반환해도 됨.
+      appBar: AppBar(
+        title: const Text('채팅'),
+        actions: [
+          IconButton(
+            tooltip: '채팅방 만들기',
+            icon: const Icon(Icons.add_circle_outline),
+            onPressed: () => Navigator.pushNamed(context, RouteNames.newChat),
+          ),
+        ],
+      ),
+      body: StreamBuilder<List<ChatRoom>>(
+        stream: chatService.watchMyRooms(),
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final rooms = snap.data ?? [];
+          if (rooms.isEmpty) {
+            return const Center(child: Text('채팅방이 없습니다.\n오른쪽 위 + 로 채팅을 시작해보세요.'));
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: rooms.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final room = rooms[index];
+              final title = _roomTitleForMe(room, myUid);
+              final last = room.lastMessage.isEmpty ? '대화를 시작해보세요' : room.lastMessage;
+
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.grey[300],
+                  child: Text(
+                    title.characters.first,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
+                title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(last, maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: Text(
+                  room.lastMessageAt == null ? '' : _formatTime(room.lastMessageAt!),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                ),
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    RouteNames.chatRoom,
+                    arguments: ChatRoomScreenArgs(
+                      roomId: room.id,
+                      roomTitle: title,
+                      isGroup: room.isGroup,
+                    ),
+                  );
+                },
               );
             },
           );
         },
+      ),
     );
   }
-}
 
-class _ChatRoomItem {
-  final String roomId;
-  final String title;
-  final String lastMessage;
-  final String time;
-  final bool isGroup;
-  final Color? color;
-
-  _ChatRoomItem({
-    required this.roomId,
-    required this.title,
-    required this.lastMessage,
-    required this.time,
-    required this.isGroup,
-    this.color,
-  });
+  String _formatTime(DateTime dt) {
+    final now = DateTime.now();
+    if (now.difference(dt).inDays >= 1) return '어제';
+    final h = dt.hour;
+    final m = dt.minute.toString().padLeft(2, '0');
+    final ampm = h < 12 ? '오전' : '오후';
+    final hh = (h % 12 == 0) ? 12 : (h % 12);
+    return '$ampm ${hh.toString().padLeft(2, '0')}:$m';
+  }
 }
