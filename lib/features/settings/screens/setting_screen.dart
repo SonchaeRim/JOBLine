@@ -4,9 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jobline/features/auth/services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import '../../auth/services/profile_service.dart';
-import 'dart:io'; // File 사용을 위해 추가
+import 'dart:io'; // File 사용
 
 class SettingScreen extends StatefulWidget {
   const SettingScreen({super.key});
@@ -22,64 +21,103 @@ class _SettingScreenState extends State<SettingScreen> {
   bool _isLoading = true;
   String _displayName = '사용자 이름';
   String _displayId = 'user_id';
-  String? _profileImageUrl;   // 프로필 이미지 URL 저장
+  String? _profileImageUrl;
 
-  List<String> _certifications = []; // DB에서 로드될 예정
-  final String _currentCommunity = 'IT개발 • 데이터';
+  List<String> _certifications = [];
+
+  // ✅ (변경) final -> 상태로 바꿈. DB에서 mainCommunityId로 읽어서 여기에 넣을거임.
+  String _currentCommunity = '미설정';
+
   final String _currentRank = 'SILVER';
+
   @override
   void initState() {
     super.initState();
     _loadUserProfile();
   }
 
+  // ✅ users/{uid}.mainCommunityId -> communities/{id}.name 가져오는 함수
+  Future<String> _loadCommunityName(String mainId) async {
+    if (mainId.isEmpty) return '미설정';
+
+    try {
+      final commDoc = await FirebaseFirestore.instance
+          .collection('communities')
+          .doc(mainId)
+          .get();
+
+      if (commDoc.exists && commDoc.data() != null) {
+        final commData = commDoc.data() as Map<String, dynamic>;
+        final name = (commData['name'] ?? '').toString();
+        if (name.isNotEmpty) return name;
+      }
+
+      // name이 없거나 문서가 없으면 id라도 표시
+      return mainId;
+    } catch (_) {
+      return mainId;
+    }
+  }
+
   // Firestore에서 사용자 프로필 정보 로드
   Future<void> _loadUserProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      if (mounted) setState(() { _isLoading = false; });
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
 
     try {
-      DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
       if (doc.exists && doc.data() != null) {
         final data = doc.data() as Map<String, dynamic>;
 
         // 닉네임 및 ID 처리
-        final nickname = data['nickname'] ?? '닉네임 없음';
-        final userId = data['name'] ?? 'ID 없음';
+        final nickname = (data['nickname'] ?? '닉네임 없음').toString();
+
+        // ✅ (중요) 너 문서에 loginId가 있으니까 name 말고 loginId로 읽는 게 맞음
+        final userId = (data['loginId'] ?? 'ID 없음').toString();
+
         final imageUrl = data['profileImageUrl'] as String?;
 
-        // 자격증/수상 데이터 처리 (DB에 필드가 없으면 빈 리스트)
+        // 자격증/수상 데이터 처리
         final List<String> loadedCertifications =
             (data['certifications'] as List<dynamic>?)
                 ?.map((e) => e.toString())
-                .toList() ?? [];
+                .toList() ??
+                [];
 
-        if (mounted) {
-          setState(() {
-            _displayName = nickname;
-            _displayId = userId;
-            _certifications = loadedCertifications;
-            _profileImageUrl = imageUrl;
-            _isLoading = false;
-          });
-        }
+        // ✅ (추가) mainCommunityId 읽어서 커뮤니티 이름 조회
+        final mainId = (data['mainCommunityId'] ?? '').toString();
+        final communityName = await _loadCommunityName(mainId);
+
+        if (!mounted) return;
+        setState(() {
+          _displayName = nickname;
+          _displayId = userId;
+          _certifications = loadedCertifications;
+          _profileImageUrl = imageUrl;
+          _currentCommunity = communityName; // ✅ 여기서 반영!
+          _isLoading = false;
+        });
       } else {
-        // 문서 없는 경우 처리
-        if (mounted) {
-          setState(() {
-            _displayName = user.email?.split('@').first ?? '사용자';
-            _displayId = user.email?.split('@').first ?? 'ID 없음';
-            _isLoading = false;
-          });
-        }
+        // 문서 없는 경우
+        if (!mounted) return;
+        final emailId = user.email?.split('@').first ?? '사용자';
+        setState(() {
+          _displayName = emailId;
+          _displayId = emailId;
+          _currentCommunity = '미설정';
+          _isLoading = false;
+        });
       }
     } catch (e) {
       debugPrint("설정 화면 프로필 로드 오류: $e");
-      if (mounted) setState(() { _isLoading = false; });
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -87,7 +125,6 @@ class _SettingScreenState extends State<SettingScreen> {
   Future<XFile?> _pickImageFromGallery() async {
     final ImagePicker picker = ImagePicker();
     try {
-      // source: ImageSource.gallery를 명시하여 갤러리만 열도록 고정
       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
       return image;
     } catch (e) {
@@ -97,46 +134,37 @@ class _SettingScreenState extends State<SettingScreen> {
     }
   }
 
-// 2. 프로필 이미지 변경 로직 (선택 -> 업로드 -> Firestore URL 저장 -> UI 갱신)
   void _pickAndUploadImage() async {
-    // 1. 로그인 상태 확인
     if (_profileService.uid == null) {
       _showSnackbar('로그인 정보가 없습니다.');
       return;
     }
 
-    // 2. 갤러리/파일 탐색기 열기 및 이미지 선택
     final XFile? pickedFile = await _pickImageFromGallery();
 
     if (pickedFile != null) {
-      // 선택 성공 시: 로딩 시작 및 업로드 진행
-      if (mounted) setState(() { _isLoading = true; });
+      if (mounted) setState(() => _isLoading = true);
       try {
         final File imageFile = File(pickedFile.path);
-
-        // ProfileService를 이용해 Storage에 업로드 및 Firestore URL 저장
         final newImageUrl = await _profileService.uploadProfileImage(imageFile);
 
-        // 3. 상태 갱신 (화면에 새 이미지 표시)
-        if (mounted) {
-          setState(() {
-            _profileImageUrl = newImageUrl;
-            _isLoading = false;
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          _profileImageUrl = newImageUrl;
+          _isLoading = false;
+        });
+
         _showSnackbar('프로필 이미지가 성공적으로 변경되었습니다.');
       } catch (e) {
         debugPrint("이미지 업로드/저장 오류: $e");
-        if (mounted) setState(() { _isLoading = false; });
+        if (mounted) setState(() => _isLoading = false);
         _showSnackbar('이미지 업로드에 실패했습니다.');
       }
     } else {
-      // 4. 선택 취소
       _showSnackbar('이미지 선택이 취소되었습니다.');
     }
   }
 
-  // 스낵바 표시 유틸리티
   void _showSnackbar(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -145,7 +173,6 @@ class _SettingScreenState extends State<SettingScreen> {
     }
   }
 
-  // 메뉴 항목 위젯 (ListTile 디자인 대체)
   Widget _buildMenuItem({
     required String title,
     String? trailingText,
@@ -168,7 +195,8 @@ class _SettingScreenState extends State<SettingScreen> {
                 if (trailingText != null)
                   Text(
                     trailingText,
-                    style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
+                    style:
+                    TextStyle(fontSize: 15, color: Colors.grey.shade600),
                   ),
                 if (isAction)
                   const Icon(Icons.chevron_right, color: Colors.grey),
@@ -180,11 +208,11 @@ class _SettingScreenState extends State<SettingScreen> {
     );
   }
 
-  // 프로필 카드 위젯
   Widget _buildProfileCard() {
     final String nickname = _displayName;
-    // 이메일 ID의 뒷 4자리를 추출 (DB에 별도 UID 4자리 필드가 없으므로 임시로 사용)
-    final String displaySuffix = _authService.currentUserId != null && _authService.currentUserId!.length > 4
+
+    final String displaySuffix =
+    _authService.currentUserId != null && _authService.currentUserId!.length > 4
         ? _authService.currentUserId!.substring(_authService.currentUserId!.length - 4)
         : '0000';
 
@@ -204,71 +232,71 @@ class _SettingScreenState extends State<SettingScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 프로필 이미지 (url있으면 NetworkImage, 없으면 기본 아이콘)
           SizedBox(
             height: 100,
             width: 80,
-           child: Stack(
-            clipBehavior: Clip.none,
-            children: [Positioned(
-              top: 0, // Stack의 상단에 고정
-              left: 0,
-              child: CircleAvatar(
-                radius: 40,
-                backgroundColor: Colors.black12,
-                backgroundImage: _profileImageUrl != null
-                    ? NetworkImage(_profileImageUrl!) as ImageProvider
-                    : null, // NetworkImage가 없으면 null
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 50, color: Colors.white)
-                    : null, // URL이 없으면 기본 아이콘 표시
-              ),
-            ),
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: InkWell( // 탭 가능하게 InkWell 사용
-                  onTap: _pickAndUploadImage, // 이미지 변경 함수 호출
-                  borderRadius: BorderRadius.circular(40), // 탭 영역 시각화
-                  child: Container(
-                    height: 20, // 높이를 사진에 맞게 조정
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      // 사진의 어두운 하단 박스 모양 구현
-                      color: Colors.black.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(40), // 원 모양에 맞게
-                    ),
-                  child: const Text(
-                    '이미지 변경',
-                    style: TextStyle(fontSize: 10, color: Colors.white),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  child: CircleAvatar(
+                    radius: 40,
+                    backgroundColor: Colors.black12,
+                    backgroundImage: _profileImageUrl != null
+                        ? NetworkImage(_profileImageUrl!) as ImageProvider
+                        : null,
+                    child: _profileImageUrl == null
+                        ? const Icon(Icons.person, size: 50, color: Colors.white)
+                        : null,
                   ),
                 ),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: InkWell(
+                    onTap: _pickAndUploadImage,
+                    borderRadius: BorderRadius.circular(40),
+                    child: Container(
+                      height: 20,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(40),
+                      ),
+                      child: const Text(
+                        '이미지 변경',
+                        style: TextStyle(fontSize: 10, color: Colors.white),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           ),
           const SizedBox(width: 15),
-          // 닉네임, 직무, 배지
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 닉네임과 임시 ID
               Text(
                 '$nickname # $displaySuffix',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
-              // 직무/커뮤니티 (임시 값)
+
+              // ✅ 여기! 고정값 아니고 DB 메인 커뮤니티 이름이 뜸
               Text(
                 _currentCommunity,
                 style: const TextStyle(fontSize: 14, color: Colors.black54),
               ),
+
               const SizedBox(height: 8),
-              // 등급 배지
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.grey.shade400, Colors.grey.shade300],
@@ -293,7 +321,6 @@ class _SettingScreenState extends State<SettingScreen> {
     );
   }
 
-  // 자격증/수상 정보 섹션
   Widget _buildCertificatesSection() {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 20),
@@ -306,37 +333,37 @@ class _SettingScreenState extends State<SettingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: _certifications.isEmpty
             ? [
-          // 자격증이 없을 때
           Text(
             '보유한 자격증이 없습니다.',
             style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
           ),
         ]
             : [
-          // 자격증이 있을 때: 리스트 표시 (DB 필드가 'certifications'라고 가정)
-          ..._certifications.map((cert) => Padding(
-            padding: const EdgeInsets.only(bottom: 6.0),
-            child: Row(
-              children: [
-                const Text('🏆', style: TextStyle(fontSize: 18)),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    cert,
-                    style: const TextStyle(fontSize: 15, color: Colors.black87),
+          ..._certifications.map(
+                (cert) => Padding(
+              padding: const EdgeInsets.only(bottom: 6.0),
+              child: Row(
+                children: [
+                  const Text('🏆', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      cert,
+                      style: const TextStyle(
+                          fontSize: 15, color: Colors.black87),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          )),
-          // 수상 경력 (임시)
+          ),
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
             child: Row(
-              children: [
-                const Text('🏅', style: TextStyle(fontSize: 18)),
-                const SizedBox(width: 8),
-                const Text(
+              children: const [
+                Text('🏅', style: TextStyle(fontSize: 18)),
+                SizedBox(width: 8),
+                Text(
                   'SW 융합 해커톤 대회 [우수상] 수상',
                   style: TextStyle(fontSize: 15, color: Colors.black87),
                 ),
@@ -348,7 +375,6 @@ class _SettingScreenState extends State<SettingScreen> {
     );
   }
 
-  // 섹션 제목과 구분선
   Widget _buildSectionHeader(String title) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,9 +392,7 @@ class _SettingScreenState extends State<SettingScreen> {
     );
   }
 
-  // 로그아웃 로직
   Future<void> _signOut() async {
-    // 1. 로그아웃 확인 대화상자 표시
     final bool confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -377,34 +401,30 @@ class _SettingScreenState extends State<SettingScreen> {
           content: const Text('정말로 로그아웃 하시겠습니까?'),
           actions: <Widget>[
             TextButton(
-              // 아니오 버튼: false 반환 (로그아웃 취소)
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text('취소'),
             ),
             TextButton(
-              // 예 버튼: true 반환 (로그아웃 진행)
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('로그아웃'),
             ),
           ],
         );
       },
-    ) ?? false; // 대화상자를 닫으면 기본값은 false (취소)
+    ) ??
+        false;
 
-    // 2. 사용자가 '로그아웃'을 눌렀을 경우에만 실제 로그아웃 진행
     if (confirm) {
       try {
         await _authService.signOut();
         if (mounted) {
-          // 성공 시 로그인 페이지로 이동
           Navigator.pushNamedAndRemoveUntil(
             context,
             RouteNames.login,
                 (Route<dynamic> route) => false,
           );
         }
-      } catch (e) {
-        // 실패 시 스낵바 표시
+      } catch (_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('로그아웃에 실패했습니다.')),
@@ -417,9 +437,7 @@ class _SettingScreenState extends State<SettingScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     return Scaffold(
@@ -433,14 +451,13 @@ class _SettingScreenState extends State<SettingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('내 프로필', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('내 프로필',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 15),
 
             _buildProfileCard(),
-
             _buildCertificatesSection(),
 
-            // 계정 섹션
             _buildSectionHeader('계정'),
 
             _buildMenuItem(
@@ -452,51 +469,42 @@ class _SettingScreenState extends State<SettingScreen> {
 
             _buildMenuItem(
               title: '비밀번호 변경',
-              onTap: () {
-                Navigator.pushNamed(context, RouteNames.passwordChange);
-              },
+              onTap: () => Navigator.pushNamed(context, RouteNames.passwordChange),
             ),
             const Divider(color: Colors.black12, height: 1),
 
             _buildMenuItem(
               title: '닉네임 변경',
-              onTap: () {
-                Navigator.pushNamed(context, RouteNames.nicknameChange);
-              },
+              onTap: () => Navigator.pushNamed(context, RouteNames.nicknameChange),
             ),
             const Divider(color: Colors.black12, height: 1),
 
-            // 게시물 섹션
             _buildSectionHeader('게시물'),
 
             _buildMenuItem(
               title: '내가 쓴 게시물',
-              onTap: () {
-                Navigator.pushNamed(context, RouteNames.myPosts);
-              },
+              onTap: () => Navigator.pushNamed(context, RouteNames.myPosts),
             ),
             const Divider(color: Colors.black12, height: 1),
 
             _buildMenuItem(
               title: '내가 쓴 댓글',
-              onTap: () {
-                Navigator.pushNamed(context, RouteNames.myComments);
-              },
+              onTap: () => Navigator.pushNamed(context, RouteNames.myComments),
             ),
             const Divider(color: Colors.black12, height: 1),
 
-            // 커뮤니티 섹션
             _buildSectionHeader('커뮤니티'),
 
             _buildMenuItem(
               title: '커뮤니티 변경',
-              onTap: () {
-                Navigator.pushNamed(context, RouteNames.communityChange);
+              onTap: () async {
+                // 변경 화면 갔다가 돌아오면 다시 로드해서 반영되게
+                await Navigator.pushNamed(context, RouteNames.communityChange);
+                await _loadUserProfile(); // ✅ 돌아오면 즉시 갱신
               },
             ),
             const Divider(color: Colors.black12, height: 1),
 
-            // 로그아웃 버튼
             _buildMenuItem(
               title: '로그아웃',
               onTap: _signOut,

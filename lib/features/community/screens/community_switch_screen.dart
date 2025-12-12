@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../community/services/community_service.dart';
 import '../../community/models/community.dart';
-
-const demoUid = 'demo-uid'; // TODO: Auth 붙이면 교체
 
 class CommunitySwitchScreen extends StatefulWidget {
   const CommunitySwitchScreen({super.key});
@@ -24,8 +24,21 @@ class _CommunitySwitchScreenState extends State<CommunitySwitchScreen> {
   }
 
   Future<void> _load() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (!mounted) return;
+      setState(() {
+        _items = [];
+        _selectedId = null;
+        _loading = false;
+      });
+      return;
+    }
+
     final items = await _svc.fetchCommunities();
-    final current = await _svc.getMainCommunityId(demoUid);
+    final current = await _svc.getMainCommunityId(user.uid);
+
+    if (!mounted) return;
     setState(() {
       _items = items;
       _selectedId = current;
@@ -34,13 +47,31 @@ class _CommunitySwitchScreenState extends State<CommunitySwitchScreen> {
   }
 
   Future<void> _apply() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 정보가 없습니다.')),
+      );
+      return;
+    }
+
     if (_selectedId == null) return;
-    await _svc.setMainCommunityId(demoUid, _selectedId!);
-    if (mounted) {
+
+    try {
+      await _svc.setMainCommunityId(user.uid, _selectedId!);
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('커뮤니티가 변경되었습니다!')),
       );
-      Navigator.pop(context);
+      Navigator.pop(context); // 설정화면으로 돌아가기
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('변경 중 오류가 발생했습니다.')),
+      );
+      // ignore: avoid_print
+      print('setMainCommunityId error: $e');
     }
   }
 
@@ -57,7 +88,10 @@ class _CommunitySwitchScreenState extends State<CommunitySwitchScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('새 메인 커뮤니티를 선택하세요', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const Text(
+              '새 메인 커뮤니티를 선택하세요',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 12),
             Expanded(
               child: SingleChildScrollView(

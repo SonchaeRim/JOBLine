@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../community/services/community_service.dart';
 import '../../community/models/community.dart';
-import '../../../routes/route_names.dart';
-import '../../common/screens/main_screen.dart'; // 🔹 MainScreen 직접 이동용
-
-const demoUid = 'demo-uid';
+import '../../common/screens/main_screen.dart';
 
 class CategorySelectScreen extends StatefulWidget {
   const CategorySelectScreen({super.key});
@@ -34,7 +32,6 @@ class _CategorySelectScreenState extends State<CategorySelectScreen> {
     });
   }
 
-  /// 🔹 가입 완료 눌렀을 때
   Future<void> _submit() async {
     if (_selectedId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -43,35 +40,31 @@ class _CategorySelectScreenState extends State<CategorySelectScreen> {
       return;
     }
 
+    // ✅ 현재 로그인 유저 uid 가져오기
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 정보가 없습니다. 다시 로그인 해주세요.')),
+      );
+      return;
+    }
+
     try {
-      await _svc.setMainCommunityId(demoUid, _selectedId!);
+      // ✅ demoUid 말고 진짜 uid로 저장
+      await _svc.setMainCommunityId(user.uid, _selectedId!);
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('커뮤니티가 설정되었습니다!')),
-      );
-
-      // ✅ 방법 1: MainScreen 직접 푸시 (스택 싹 비우고)
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const MainScreen()),
             (route) => false,
       );
-
-      // ✅ 방법 2: named route 쓰고 싶으면 이걸로 (위에 거 대신)
-      // Navigator.pushNamedAndRemoveUntil(
-      //   context,
-      //   RouteNames.home,
-      //   (route) => false,
-      // );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('저장 중 오류가 발생했습니다.')),
       );
-      // 디버깅용
-      // ignore: avoid_print
       print('setMainCommunityId error: $e');
     }
   }

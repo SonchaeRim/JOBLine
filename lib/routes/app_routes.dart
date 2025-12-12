@@ -42,7 +42,7 @@ import '../features/community/screens/category_select_screen.dart'; // 회원가
 // 또는 설정 탭에서 "커뮤니티 변경"을 누르면 나오는 화면
 
 import '../features/community/screens/main_community_screen.dart'; // 사용자의 커뮤니티 내 홈 화면
-
+import '../features/community/screens/community_switch_screen.dart';
 import '../features/community/models/community.dart'; //-> 커뮤니티 ID, 이름, 카테고리, 설명 등을 담는 데이터 모델
 import '../features/community/services/community_service.dart'; //-> 관심분야 기반 자동 배정, 커뮤니티 목록 조회/변경 로직
 
@@ -222,7 +222,7 @@ class AppRoutes {
     // [설정 > 계정 > 닉네임 변경]
     RouteNames.nicknameChange:  (context) => const NicknameChangeScreen(),
     // [설정 > 커뮤니티 변경]
-    RouteNames.communityChange: (context) => const CommunityChangeScreen(),
+    RouteNames.communityChange: (context) => const CommunitySwitchScreen(),
     // [설정 > 내가 쓴 게시물]
     RouteNames.myPosts:         (context) => const MyPostsScreen(),
     // [설정 > 내가 쓴 댓글]
