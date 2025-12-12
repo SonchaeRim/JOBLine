@@ -201,10 +201,15 @@ class _SettingScreenState extends State<SettingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 프로필 이미지 (url있으면 NetworkImage, 없으면 기본 아이콘)
-          Stack(
+          SizedBox(
+            height: 100,
+            width: 80,
+           child: Stack(
             clipBehavior: Clip.none,
-            children: [
-              CircleAvatar(
+            children: [Positioned(
+              top: 0, // Stack의 상단에 고정
+              left: 0,
+              child: CircleAvatar(
                 radius: 40,
                 backgroundColor: Colors.black12,
                 backgroundImage: _profileImageUrl != null
@@ -214,15 +219,16 @@ class _SettingScreenState extends State<SettingScreen> {
                     ? const Icon(Icons.person, size: 50, color: Colors.white)
                     : null, // URL이 없으면 기본 아이콘 표시
               ),
+            ),
               Positioned(
-                bottom: -5,
+                bottom: 0,
                 left: 0,
                 right: 0,
                 child: InkWell( // 탭 가능하게 InkWell 사용
                   onTap: _pickAndUploadImage, // 이미지 변경 함수 호출
                   borderRadius: BorderRadius.circular(40), // 탭 영역 시각화
                   child: Container(
-                    height: 18, // 높이를 사진에 맞게 조정
+                    height: 20, // 높이를 사진에 맞게 조정
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       // 사진의 어두운 하단 박스 모양 구현
@@ -237,6 +243,7 @@ class _SettingScreenState extends State<SettingScreen> {
                 ),
               ),
             ],
+          ),
           ),
           const SizedBox(width: 15),
           // 닉네임, 직무, 배지
@@ -355,22 +362,50 @@ class _SettingScreenState extends State<SettingScreen> {
     );
   }
 
-  // 로그아웃 로직 (옵션)
+  // 로그아웃 로직
   Future<void> _signOut() async {
-    try {
-      await _authService.signOut();
-      if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          RouteNames.login,
-              (Route<dynamic> route) => false,
+    // 1. 로그아웃 확인 대화상자 표시
+    final bool confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('로그아웃'),
+          content: const Text('정말로 로그아웃 하시겠습니까?'),
+          actions: <Widget>[
+            TextButton(
+              // 아니오 버튼: false 반환 (로그아웃 취소)
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              // 예 버튼: true 반환 (로그아웃 진행)
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('로그아웃'),
+            ),
+          ],
         );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('로그아웃에 실패했습니다.')),
-        );
+      },
+    ) ?? false; // 대화상자를 닫으면 기본값은 false (취소)
+
+    // 2. 사용자가 '로그아웃'을 눌렀을 경우에만 실제 로그아웃 진행
+    if (confirm) {
+      try {
+        await _authService.signOut();
+        if (mounted) {
+          // 성공 시 로그인 페이지로 이동
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            RouteNames.login,
+                (Route<dynamic> route) => false,
+          );
+        }
+      } catch (e) {
+        // 실패 시 스낵바 표시
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('로그아웃에 실패했습니다.')),
+          );
+        }
       }
     }
   }
@@ -460,7 +495,7 @@ class _SettingScreenState extends State<SettingScreen> {
             // 로그아웃 버튼
             _buildMenuItem(
               title: '로그아웃',
-              //onTap: _signOut,
+              onTap: _signOut,
               isAction: false,
             ),
             const SizedBox(height: 20),
