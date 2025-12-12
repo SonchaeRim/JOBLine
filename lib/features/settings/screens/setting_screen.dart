@@ -3,6 +3,9 @@ import '../../../routes/route_names.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jobline/features/auth/services/auth_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io'; // File 사용을 위해 추가
 
 class SettingScreen extends StatefulWidget {
   const SettingScreen({super.key});
@@ -16,11 +19,11 @@ class _SettingScreenState extends State<SettingScreen> {
   bool _isLoading = true;
   String _displayName = '사용자 이름';
   String _displayId = 'user_id';
+  String? _profileImageUrl;   // 프로필 이미지 URL 저장
 
   List<String> _certifications = []; // DB에서 로드될 예정
   final String _currentCommunity = 'IT개발 • 데이터';
   final String _currentRank = 'SILVER';
-
   @override
   void initState() {
     super.initState();
@@ -44,6 +47,7 @@ class _SettingScreenState extends State<SettingScreen> {
         // 닉네임 및 ID 처리
         final nickname = data['nickname'] ?? '닉네임 없음';
         final userId = data['name'] ?? 'ID 없음';
+        final imageUrl = data['profileImageUrl'] as String?;
 
         // 자격증/수상 데이터 처리 (DB에 필드가 없으면 빈 리스트)
         final List<String> loadedCertifications =
@@ -56,6 +60,7 @@ class _SettingScreenState extends State<SettingScreen> {
             _displayName = nickname;
             _displayId = userId;
             _certifications = loadedCertifications;
+            _profileImageUrl = imageUrl;
             _isLoading = false;
           });
         }
@@ -75,6 +80,66 @@ class _SettingScreenState extends State<SettingScreen> {
     }
   }
 
+  // 이미지 선택 및 업로드 로직 추가
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      _showSnackbar('로그인이 필요합니다.');
+      return;
+    }
+
+    // 1. 이미지 선택
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile == null) return; // 이미지 선택 취소 시 종료
+
+    if (mounted) setState(() { _isLoading = true; }); // 로딩 시작
+
+    try {
+      final file = File(pickedFile.path);
+      final fileName = 'profile_image_${user.uid}.jpg';
+      final storageRef = FirebaseStorage.instance.ref().child('user_profiles').child(fileName);
+
+      // 2. Firebase Storage에 업로드
+      await storageRef.putFile(file);
+
+      // 3. 다운로드 URL 획득
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      // 4. Firestore에 URL 업데이트
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'profileImageUrl': downloadUrl,
+      });
+
+      // 5. 상태 업데이트 및 성공 메시지
+      if (mounted) {
+        setState(() {
+          _profileImageUrl = downloadUrl;
+          _isLoading = false;
+        });
+        _showSnackbar('프로필 이미지가 성공적으로 변경되었습니다.');
+      }
+    } on FirebaseException catch (e) {
+      debugPrint('Firebase 이미지 업로드/업데이트 오류: $e');
+      _showSnackbar('이미지 변경에 실패했습니다. (${e.message})');
+      if (mounted) setState(() { _isLoading = false; });
+    } catch (e) {
+      debugPrint('일반 이미지 업로드 오류: $e');
+      _showSnackbar('이미지 변경 중 알 수 없는 오류가 발생했습니다.');
+      if (mounted) setState(() { _isLoading = false; });
+    }
+  }
+
+  // 스낵바 표시 유틸리티
+  void _showSnackbar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
 
   // 메뉴 항목 위젯 (ListTile 디자인 대체)
   Widget _buildMenuItem({
@@ -135,27 +200,40 @@ class _SettingScreenState extends State<SettingScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 프로필 이미지 (임시)
+          // 프로필 이미지 (url있으면 NetworkImage, 없으면 기본 아이콘)
           Stack(
+            clipBehavior: Clip.none,
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 40,
                 backgroundColor: Colors.black12,
-                child: Icon(Icons.person, size: 50, color: Colors.white),
+                backgroundImage: _profileImageUrl != null
+                    ? NetworkImage(_profileImageUrl!) as ImageProvider
+                    : null, // NetworkImage가 없으면 null
+                child: _profileImageUrl == null
+                    ? const Icon(Icons.person, size: 50, color: Colors.white)
+                    : null, // URL이 없으면 기본 아이콘 표시
               ),
               Positioned(
-                bottom: 0,
+                bottom: -5,
+                left: 0,
                 right: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
+                child: InkWell( // 탭 가능하게 InkWell 사용
+                  onTap: _pickAndUploadImage, // 이미지 변경 함수 호출
+                  borderRadius: BorderRadius.circular(40), // 탭 영역 시각화
+                  child: Container(
+                    height: 18, // 높이를 사진에 맞게 조정
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      // 사진의 어두운 하단 박스 모양 구현
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(40), // 원 모양에 맞게
+                    ),
                   child: const Text(
                     '이미지 변경',
                     style: TextStyle(fontSize: 10, color: Colors.white),
                   ),
+                ),
                 ),
               ),
             ],
@@ -278,7 +356,7 @@ class _SettingScreenState extends State<SettingScreen> {
   }
 
   // 로그아웃 로직 (옵션)
-  /*Future<void> _signOut() async {
+  Future<void> _signOut() async {
     try {
       await _authService.signOut();
       if (mounted) {
@@ -296,7 +374,6 @@ class _SettingScreenState extends State<SettingScreen> {
       }
     }
   }
-*/
 
   @override
   Widget build(BuildContext context) {
@@ -380,7 +457,7 @@ class _SettingScreenState extends State<SettingScreen> {
             ),
             const Divider(color: Colors.black12, height: 1),
 
-            // 로그아웃 버튼 (추가)
+            // 로그아웃 버튼
             _buildMenuItem(
               title: '로그아웃',
               //onTap: _signOut,

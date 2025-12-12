@@ -25,9 +25,9 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
   }
 
   void _onConfirmPressed() async {
-    final oldPw = newPwController.text;
-    final newPw = newPwController.text;
-    final confirmPw = confirmPwController.text;
+    final oldPw = oldPwController.text.trim();
+    final newPw = newPwController.text.trim();
+    final confirmPw = confirmPwController.text.trim();
 
     // 1. 유효성 검사
     setState(() {
@@ -192,36 +192,29 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
             child: Container(
               color: Colors.white, // 배경색 설정
               padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ElevatedButton(
-                    onPressed: _onConfirmPressed,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      minimumSize: const Size.fromHeight(50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text('확인', style: TextStyle(fontSize: 18)),
+              child:ElevatedButton(
+                onPressed: _isLoading ? null : _onConfirmPressed, // 로딩 중에는 버튼 비활성화
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  const SizedBox(height: 10),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      if (_errorText == null) Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.check),
-                    label: const Text('변경 완료', style: TextStyle(fontSize: 18)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      minimumSize: const Size.fromHeight(50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                ),
+                child: _isLoading
+                  ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3,
                       ),
-                    ),
-                  ),
-                ],
+                  )
+                          : const Text(
+                            '변경 완료',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
               ),
             ),
           ),

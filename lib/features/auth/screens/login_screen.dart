@@ -1,11 +1,13 @@
 //이메일/비밀번호 TextField + 로그인 버튼 + "회원가입" 이동 버튼
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:jobline/features/auth/screens/signup_screen.dart';
 import '../../../routes/route_names.dart';
 import '../../auth/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   //textfield처럼 입력 받고 화면 상태가 변할 때 사용
@@ -21,6 +23,47 @@ class _LoginScreenState extends State<LoginScreen> {
   final AuthService _authService = AuthService();
   bool _isPasswordVisible = false; //비번 숨김처리
   bool _isLoginChecked = false; //자동로그인 체크
+
+  static const String _autoLoginKey = 'isAutoLoginChecked';
+  @override
+  void initState() {
+    super.initState();
+    _loadAutoLoginState(); // 위젯 초기화 시 저장된 상태 로드
+  }
+
+  // 저장된 자동 로그인 체크 상태를 로드
+  Future<void> _loadAutoLoginState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isChecked = prefs.getBool(_autoLoginKey) ?? false;
+
+    if (mounted) {
+      setState(() {
+        _isLoginChecked = isChecked;
+      });
+      // 앱 시작 시 자동 로그인 체크가 되어 있다면 바로 로그인 시도
+      if (isChecked) {
+         _attemptAutoLogin();
+      }
+    }
+  }
+
+  // 자동 로그인 체크 상태를 SharedPreferences에 저장
+  Future<void> _saveAutoLoginState(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_autoLoginKey, value);
+  }
+
+  // 자동 로그인 시도 (Firebase Auth의 현재 사용자 확인)
+  Future<void> _attemptAutoLogin() async {
+    // FirebaseAuth.instance.currentUser는 이미 로그인된 사용자 정보를 가지고 있습니다.
+    if (FirebaseAuth.instance.currentUser != null && _isLoginChecked) {
+      // SharedPreferences에 저장된 사용자 정보(ID/Email)가 있다면 추가 확인 가능
+      // 현재는 단순히 Auth 상태만 확인하고 이동합니다.
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, RouteNames.home);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -204,9 +247,11 @@ class _LoginScreenState extends State<LoginScreen> {
             Checkbox(
               value: _isLoginChecked,
               onChanged: (bool? newValue) {
+                final checked = newValue ?? false;
                 setState(() {
-                  _isLoginChecked = newValue ?? false; // 상태 업데이트
+                  _isLoginChecked = checked; // 상태 업데이트
                   });
+                  _saveAutoLoginState(checked);
                 },
                 activeColor: Colors.blue,
               ),

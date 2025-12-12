@@ -111,7 +111,6 @@ class _NicknameChangeScreenState extends State<NicknameChangeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final TextEditingController nicknameController = TextEditingController(text: "기존");
     // 로딩 중일 때 로딩 인디케이터 표시
     if (_isLoading) {
       return const Scaffold(
@@ -145,7 +144,7 @@ class _NicknameChangeScreenState extends State<NicknameChangeScreen> {
               children: [
                 Expanded(
                   child: TextField(
-                    controller: nicknameController,
+                    controller: _nicknameController,
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.white,
@@ -166,7 +165,7 @@ class _NicknameChangeScreenState extends State<NicknameChangeScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed: _updateNickname,
                   child: const Text(
                     "변경 완료",
                     style: TextStyle(color: Colors.white, fontSize: 14),
