@@ -281,7 +281,8 @@ class AppRoutes {
         final args = settings.arguments as Map<String, dynamic>?;
 
         final boardId = args?['boardId'] as String?;
-        final title   = args?['title']   as String?;
+        final title = args?['title'] as String?;
+        final communityId = args?['communityId'] as String?;
 
         if (boardId == null || title == null) {
           return MaterialPageRoute(
@@ -289,11 +290,17 @@ class AppRoutes {
             settings: settings,
           );
         }
+
         return MaterialPageRoute(
-          builder: (_) => PostListScreen(boardId: boardId, title: title),
+          builder: (_) => PostListScreen(
+            boardId: boardId,
+            title: title,
+            communityId: communityId,
+          ),
           settings: settings,
         );
       }
+
 
 
     // ------------- 챌린지 상세 & 증빙 업로드 -------------
