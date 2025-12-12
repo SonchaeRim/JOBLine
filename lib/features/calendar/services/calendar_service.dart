@@ -110,5 +110,17 @@ class CalendarService {
 
     return snapshot.docs.map((doc) => Schedule.fromFirestore(doc)).toList();
   }
+
+  /// 일정 알림 토글
+  Future<void> toggleNotification(String scheduleId, bool hasNotification) async {
+    try {
+      await _firestore.collection(_collection).doc(scheduleId).update({
+        'hasNotification': hasNotification,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('알림 설정 변경 실패: $e');
+    }
+  }
 }
 

@@ -134,12 +134,29 @@ xpService.getXpLogs(userId, limit: 50);
 
 **경로**: `users/{userId}`
 
-**주의**: 이 컬렉션은 **B 담당 (계정·프로필/미디어 담당)**에서 주로 관리하지만, D 담당에서 XP 관련 필드를 업데이트합니다.
+**설명**: 계정/프로필 기본 정보를 저장합니다. `userId`는 Firebase Auth `uid`를 사용합니다.
 
-**D 담당이 업데이트하는 필드**:
+**필드**:
+- `displayName` (string, required): 닉네임/표시 이름
+- `photoUrl` (string, optional): 프로필 이미지 URL
+- `email` (string, required): 로그인 이메일 (익명이면 비워둠)
+- `phoneNumber` (string, optional): 전화번호 인증 시
+- `providerIds` (array<string>, required): 연결된 로그인 프로바이더 목록 (예: `['password','google.com']`)
+- `createdAt` (timestamp, required): 계정 문서 생성 시각
+- `updatedAt` (timestamp, required): 마지막 업데이트 시각
+- `role` (string, required): 권한/역할 (예: `user`, `admin`)
+- `status` (string, required): 계정 상태 (예: `active`, `banned`, `pending`)
+- `lastLoginAt` (timestamp, required): 마지막 로그인 시각
+- `pushToken` (string, optional): FCM 토큰 (로그인 시 최신값 저장, 로그아웃 시 비움)
+- `timezone` (string, required): 타임존 ID (예: `Asia/Seoul`)
+- `marketingConsent` (boolean, required): 마케팅 수신 동의 여부
+- `termsAcceptedAt` (timestamp, required): 약관 동의 시점
 - `totalXp` (number, default: 0): 누적 총 XP
 - `level` (number, default: 0): 현재 레벨
-- `updatedAt` (timestamp, required): 마지막 업데이트 시간
+
+**주의**:
+- 이 컬렉션은 **B 담당 (계정·프로필/미디어 담당)**에서 주로 관리하지만, D 담당에서 XP 관련 필드(`totalXp`, `level`, `updatedAt`)를 업데이트합니다.
+- 민감정보(비밀번호, 액세스 토큰, 결제정보 등)는 저장하지 않습니다.
 
 **인덱스 필요**: 없음 (단일 문서 조회)
 
@@ -150,6 +167,38 @@ xpService.getUserXp(userId);
 
 // 사용자의 XP 스트림
 xpService.getUserXpStream(userId);
+```
+
+---
+
+### 6. `notification_requests` - 알림 예약 요청 컬렉션
+
+**경로**: `notification_requests/{requestId}`
+
+**설명**: FCM 푸시 알림 예약 요청을 저장합니다. Firebase Functions 또는 서버에서 이를 감지하고 알림을 스케줄링합니다.
+
+**필드**:
+- `scheduleId` (string, required): 일정 ID
+- `userId` (string, required): 사용자 ID (일정 소유자)
+- `fcmToken` (string, required): FCM 토큰
+- `title` (string, required): 일정 제목
+- `scheduledTime` (timestamp, required): 일정 시작 시간
+- `notificationTimes` (array<timestamp>, required): 알림을 보낼 시간 목록 (하루 전, 1시간 전, 5분 전)
+- `createdAt` (timestamp, required): 요청 생성 시간
+- `status` (string, required): 요청 상태 (`pending`, `cancelled`, `completed`)
+- `cancelledAt` (timestamp, optional): 취소 시간
+
+**인덱스 필요**:
+- `scheduleId` + `status` (오름차순)
+- `userId` + `status` + `createdAt` (내림차순)
+
+**사용 예시**:
+```dart
+// 알림 예약 요청 생성
+fcmNotificationService.scheduleScheduleNotification(schedule);
+
+// 알림 취소 요청
+fcmNotificationService.cancelScheduleNotification(scheduleId);
 ```
 
 ---
@@ -218,6 +267,11 @@ service cloud.firestore {
         // XP 관련 필드만 업데이트 가능
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['totalXp', 'level', 'updatedAt']);
+    }
+    
+    // notification_requests 컬렉션 (개발용: 일단 다 허용)
+    match /notification_requests/{requestId} {
+      allow read, write: if request.auth != null;
     }
   }
 }

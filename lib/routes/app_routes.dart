@@ -66,7 +66,7 @@ import '../features/board/models/board_category.dart'; //-> 자유/스펙공유/
 import '../features/board/services/board_service.dart'; //-> 글 목록 조회, 작성/수정/삭제, 좋아요 등 게시판 비즈니스 로직
 import '../features/board/services/report_block_service.dart';// -> 신고/차단 기능 처리 (무관/위반 게시글 숨기기/삭제)
 import '../features/board/widgets/post_card.dart'; //-> 게시글 목록에서 한 개의 게시글을 카드 형태로 보여주는 위젯
-import '../features/board/widgets/template_fields.dart';// -> 게시판별 필수 입력 필드를 생성해주는 UI 위젯
+import '../features/board/widgets/template_fields.dart';// -> 게시판ㄲ별 필수 입력 필드를 생성해주는 UI 위젯
 
 
 // ========= 캘린더 영역 =========
@@ -74,10 +74,11 @@ import '../features/calendar/screens/calendar_screen.dart'; // 캘린더 메인 
 // 상단 : 한 달 단위 월간 달력 뷰 (MonthView 위젯 사용)
 // 하단 : 곧 마감되는 일정부터, 마감일이 먼 일정 순으로 쭉 나열되는 리스트 (공모전 / 자격증 / 채용 / 챌린지 등 모든 일정 포함)
 
-// 이 기능은 없는 거죠 ??
-// import '../features/calendar/screens/schedule_detail_sheet.dart';
-// // 캘린더에서 특정 일정을 눌렀을 때 뜨는 상세 화면
-// // - 제목, 일시, 링크, 좋아요 버튼, 설명 등을 표시
+import '../features/calendar/screens/schedule_detail_screen.dart'; // 일정 상세/추가/수정 화면
+// 캘린더에서 특정 일정을 눌렀을 때 뜨는 상세 화면
+// - 제목, 일시, 링크, 좋아요 버튼, 설명 등을 표시
+import '../features/calendar/models/schedule.dart';
+import '../features/calendar/services/calendar_service.dart';
 
 // import '../features/calendar/models/schedule.dart'; -> 일정 데이터 모델 (title, dateTime, category, link 등)
 // import '../features/calendar/services/calendar_service.dart'; -> 일정 등록/수정/삭제, 목록 조회 로직
@@ -399,6 +400,33 @@ class AppRoutes {
           builder: (_) => const NewChatScreen(),
           settings: settings,
         );
+
+    // ------------- 캘린더 일정 상세/추가/수정 -------------
+      case RouteNames.scheduleDetail: {
+        final args = settings.arguments as Map<String, dynamic>?;
+        
+        final userId = args?['userId'] as String?;
+        final calendarService = args?['calendarService'] as CalendarService?;
+        final schedule = args?['schedule'] as Schedule?;
+        final selectedDate = args?['selectedDate'] as DateTime?;
+
+        if (userId == null || calendarService == null) {
+          return MaterialPageRoute(
+            builder: (_) => const ErrorScreen(unknownRouteName: 'scheduleDetail: userId or calendarService missing'),
+            settings: settings,
+          );
+        }
+
+        return MaterialPageRoute(
+          builder: (_) => ScheduleDetailScreen(
+            userId: userId,
+            calendarService: calendarService,
+            schedule: schedule,
+            selectedDate: selectedDate,
+          ),
+          settings: settings,
+        );
+      }
 
       default:
       // 정의되지 않은 경로 → 공통 에러 화면으로 보냄

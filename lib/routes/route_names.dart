@@ -6,12 +6,15 @@ class RouteNames {
   static const String home = '/home';
   static const String error = '/error';
 
-  // ========== 홈 탭 영역 ==========
+  // ========== 홈 영역 ==========
   static const String board = '/home/board';
   static const String calendar = '/home/calendar';
   static const String chat = '/home/chat';
   static const String challenge = '/home/challenge';
   static const String settings = '/home/settings';
+
+  // ========== 캘린더 ==========
+  static const String scheduleDetail = '/schedule-detail';
 
   // ========== 커뮤니티 ==========
   static const String categorySelect = '/community/category-select'; // 회원가입 이후 커뮤니티 선택
