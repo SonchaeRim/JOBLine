@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/xp_rule.dart';
+import '../models/rank.dart';
 
 /// XP 관리 서비스
 class XpService {
@@ -15,8 +15,8 @@ class XpService {
     String? referenceId,
   }) async {
     try {
-      // 액션별 기본 XP 가져오기
-      final xpAmount = amount ?? XpRule.getXpForAction(action);
+      // amount가 지정되지 않으면 0 (항상 amount를 지정해야 함)
+      final xpAmount = amount ?? 0;
 
       if (xpAmount <= 0) return;
 
@@ -30,12 +30,12 @@ class XpService {
       }
 
       final newXp = currentXp + xpAmount;
-      final newLevel = XpRule.calculateLevel(newXp);
+      final newRank = RankUtil.getRank(newXp).name;
 
       // 사용자 XP 업데이트
       await userDoc.set({
         'totalXp': newXp,
-        'level': newLevel,
+        'rank': newRank,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
@@ -45,7 +45,6 @@ class XpService {
         'action': action,
         'amount': xpAmount,
         'totalXp': newXp,
-        'level': newLevel,
         'referenceId': referenceId,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -54,7 +53,7 @@ class XpService {
     }
   }
 
-  /// 사용자의 현재 XP와 레벨 가져오기
+  /// 사용자의 현재 XP와 등급 가져오기
   Future<Map<String, dynamic>> getUserXp(String userId) async {
     try {
       final userDoc =
@@ -63,21 +62,22 @@ class XpService {
       if (!userDoc.exists) {
         return {
           'totalXp': 0,
-          'level': 0,
-          'xpToNextLevel': 100,
-          'progress': 0.0,
+          'rank': RankUtil.getRank(0).name,
         };
       }
 
       final data = userDoc.data()!;
       final totalXp = (data['totalXp'] as int?) ?? 0;
-      final level = (data['level'] as int?) ?? 0;
+      final rank = (data['rank'] as String?) ?? RankUtil.getRank(totalXp).name;
+
+      // rank 필드가 없으면 추가
+      if (data['rank'] == null) {
+        await userDoc.reference.update({'rank': rank});
+      }
 
       return {
         'totalXp': totalXp,
-        'level': level,
-        'xpToNextLevel': XpRule.getXpToNextLevel(totalXp),
-        'progress': XpRule.getLevelProgress(totalXp),
+        'rank': rank,
       };
     } catch (e) {
       throw Exception('XP 조회 실패: $e');
@@ -94,20 +94,24 @@ class XpService {
       if (!doc.exists) {
         return {
           'totalXp': 0,
-          'level': 0,
-          'xpToNextLevel': 100,
-          'progress': 0.0,
+          'rank': RankUtil.getRank(0).name,
         };
       }
 
       final data = doc.data()!;
       final totalXp = (data['totalXp'] as int?) ?? 0;
+      final rank = (data['rank'] as String?) ?? RankUtil.getRank(totalXp).name;
+
+      // rank 필드가 없으면 백그라운드에서 추가 (스트림 내부에서는 await 불가)
+      if (data['rank'] == null) {
+        doc.reference.update({'rank': rank}).catchError((e) {
+          // 업데이트 실패는 무시 (다음 스트림 업데이트에서 다시 시도)
+        });
+      }
 
       return {
         'totalXp': totalXp,
-        'level': (data['level'] as int?) ?? 0,
-        'xpToNextLevel': XpRule.getXpToNextLevel(totalXp),
-        'progress': XpRule.getLevelProgress(totalXp),
+        'rank': rank,
       };
     });
   }
@@ -128,7 +132,6 @@ class XpService {
                 'action': data['action'],
                 'amount': data['amount'],
                 'totalXp': data['totalXp'],
-                'level': data['level'],
                 'createdAt': (data['createdAt'] as Timestamp).toDate(),
               };
             })

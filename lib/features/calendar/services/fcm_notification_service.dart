@@ -447,113 +447,14 @@ class FcmNotificationService {
     }
   }
 
-  /// 모든 중복 알림 요청 및 작업 정리 (수동 호출용)
-  Future<void> cleanupAllDuplicates() async {
-    try {
-      print('🧹 전체 중복 알림 정리 시작...');
-
-      // 모든 notification_requests 조회
-      final allRequests = await _firestore
-          .collection('notification_requests')
-          .get();
-
-      // scheduleId별로 그룹화
-      final Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>> requestsBySchedule = {};
-      
-      for (var doc in allRequests.docs) {
-        final scheduleId = doc.data()['scheduleId'] as String?;
-        if (scheduleId == null) continue;
-        
-        requestsBySchedule.putIfAbsent(scheduleId, () => []).add(doc);
-      }
-
-      int totalCleaned = 0;
-
-      // 각 scheduleId별로 정리
-      for (var entry in requestsBySchedule.entries) {
-        final scheduleId = entry.key;
-        final requests = entry.value;
-
-        // 활성 상태인 요청들만 필터링
-        final activeRequests = requests.where((doc) {
-          final status = doc.data()['status'] as String?;
-          return status == 'pending' || status == 'processing';
-        }).toList();
-
-        if (activeRequests.length <= 1) continue;
-
-        // createdAt 기준으로 정렬 (가장 최근 것만 남김)
-        activeRequests.sort((a, b) {
-          final aTime = a.data()['createdAt'] as Timestamp?;
-          final bTime = b.data()['createdAt'] as Timestamp?;
-          if (aTime == null || bTime == null) return 0;
-          return bTime.compareTo(aTime);
-        });
-
-        // 가장 최근 요청을 제외한 나머지 모두 삭제
-        final batch = _firestore.batch();
-        for (int i = 1; i < activeRequests.length; i++) {
-          batch.delete(activeRequests[i].reference);
-        }
-
-        await batch.commit();
-        totalCleaned += activeRequests.length - 1;
-        print('🧹 일정 ID=$scheduleId: ${activeRequests.length - 1}개 중복 요청 삭제');
-      }
-
-      // notification_jobs도 정리
-      final allJobs = await _firestore
-          .collection('notification_jobs')
-          .where('status', isEqualTo: 'pending')
-          .get();
-
-      final Map<String, Map<String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>> jobsByScheduleAndTime = {};
-      
-      for (var doc in allJobs.docs) {
-        final scheduleId = doc.data()['scheduleId'] as String?;
-        final notificationTime = doc.data()['notificationTime'] as Timestamp?;
-        if (scheduleId == null || notificationTime == null) continue;
-        
-        jobsByScheduleAndTime.putIfAbsent(scheduleId, () => {});
-        final timeKey = notificationTime.millisecondsSinceEpoch.toString();
-        jobsByScheduleAndTime[scheduleId]!.putIfAbsent(timeKey, () => []).add(doc);
-      }
-
-      int totalJobsCleaned = 0;
-
-      for (var scheduleEntry in jobsByScheduleAndTime.entries) {
-        final scheduleId = scheduleEntry.key;
-        final jobsByTime = scheduleEntry.value;
-
-        for (var jobs in jobsByTime.values) {
-          if (jobs.length <= 1) continue;
-
-          jobs.sort((a, b) {
-            final aTime = a.data()['createdAt'] as Timestamp?;
-            final bTime = b.data()['createdAt'] as Timestamp?;
-            if (aTime == null || bTime == null) return 0;
-            return bTime.compareTo(aTime);
-          });
-
-          final batch = _firestore.batch();
-          for (int i = 1; i < jobs.length; i++) {
-            batch.delete(jobs[i].reference);
-          }
-
-          await batch.commit();
-          totalJobsCleaned += jobs.length - 1;
-        }
-      }
-
-      print('✅ 전체 중복 정리 완료: 요청 $totalCleaned개, 작업 $totalJobsCleaned개 삭제됨');
-    } catch (e) {
-      print('❌ 전체 중복 정리 실패: $e');
-    }
-  }
 }
 
 /// 백그라운드 메시지 핸들러 (최상위 함수)
-/// 별도의 isolate에서 실행되므로 로컬 알림 플러그인을 다시 초기화해야 함
+/// 별도의 isolate에서 실행됩니다.
+/// 
+/// 주의: FCM 메시지에 `notification` 필드가 있으면 FCM이 자동으로 알림을 표시하므로
+/// 여기서는 로컬 알림을 표시하지 않습니다. (중복 방지)
+/// `data` 필드만 있는 경우에만 로컬 알림을 표시해야 합니다.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('📬 백그라운드 알림 수신:');
@@ -561,68 +462,14 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('   본문: ${message.notification?.body}');
   print('   데이터: ${message.data}');
 
-  // 백그라운드 isolate에서 로컬 알림 플러그인 초기화
-  final localNotifications = FlutterLocalNotificationsPlugin();
+  // FCM 메시지에 `notification` 필드가 있으면 FCM이 자동으로 알림을 표시합니다.
+  // 따라서 여기서는 로컬 알림을 표시하지 않아 중복을 방지합니다.
+  // 
+  // 만약 `data` 필드만 있는 경우에만 로컬 알림을 표시해야 한다면:
+  // if (message.notification == null && message.data.isNotEmpty) {
+  //   // 로컬 알림 표시 로직
+  // }
   
-  const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const iosSettings = DarwinInitializationSettings(
-    requestAlertPermission: true,
-    requestBadgePermission: true,
-    requestSoundPermission: true,
-  );
-  const initSettings = InitializationSettings(
-    android: androidSettings,
-    iOS: iosSettings,
-  );
-
-  await localNotifications.initialize(initSettings);
-
-  // Android 알림 채널 생성
-  const androidChannel = AndroidNotificationChannel(
-    'high_importance_channel',
-    'High Importance Notifications',
-    description: 'This channel is used for important notifications.',
-    importance: Importance.high,
-    playSound: true,
-  );
-
-  await localNotifications
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(androidChannel);
-
-  // 백그라운드에서도 알림 표시
-  if (message.notification != null) {
-    final notification = message.notification!;
-    final androidDetails = AndroidNotificationDetails(
-      'high_importance_channel',
-      'High Importance Notifications',
-      channelDescription: 'This channel is used for important notifications.',
-      importance: Importance.high,
-      priority: Priority.high,
-      showWhen: true,
-      playSound: true,
-    );
-
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    final details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    await localNotifications.show(
-      message.hashCode,
-      notification.title ?? '일정 알림',
-      notification.body ?? '',
-      details,
-      payload: message.data.toString(),
-    );
-
-    print('✅ 백그라운드 알림 표시 완료');
-  }
+  print('✅ 백그라운드 알림 처리 완료 (FCM이 자동으로 알림 표시)');
 }
 
