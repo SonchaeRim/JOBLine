@@ -19,8 +19,7 @@ class ProfileService {
   // 프로필 이미지 업로드 후 Firestore에 URL 저장
   Future<String> uploadProfileImage(File imageFile) async {
     try {
-      final ref = _storage.ref().child('user_profiles/profile_image_$uid.jpg');
-
+      final ref = _storage.ref().child('user_profiles/$uid');
       // Firebase Storage 업로드
       await ref.putFile(imageFile);
 

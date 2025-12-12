@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jobline/features/auth/services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import '../../auth/services/profile_service.dart';
 import 'dart:io'; // File 사용을 위해 추가
 
 class SettingScreen extends StatefulWidget {
@@ -16,6 +17,8 @@ class SettingScreen extends StatefulWidget {
 
 class _SettingScreenState extends State<SettingScreen> {
   final AuthService _authService = AuthService();
+  final ProfileService _profileService = ProfileService();
+
   bool _isLoading = true;
   String _displayName = '사용자 이름';
   String _displayId = 'user_id';
@@ -80,55 +83,56 @@ class _SettingScreenState extends State<SettingScreen> {
     }
   }
 
-  // 이미지 선택 및 업로드 로직 추가
-  Future<void> _pickAndUploadImage() async {
-    final picker = ImagePicker();
-    final user = FirebaseAuth.instance.currentUser;
+  // 프로필 이미지 변경
+  Future<XFile?> _pickImageFromGallery() async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      // source: ImageSource.gallery를 명시하여 갤러리만 열도록 고정
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      return image;
+    } catch (e) {
+      debugPrint("이미지 선택 오류: $e");
+      _showSnackbar('이미지 선택에 실패했습니다.');
+      return null;
+    }
+  }
 
-    if (user == null) {
-      _showSnackbar('로그인이 필요합니다.');
+// 2. 프로필 이미지 변경 로직 (선택 -> 업로드 -> Firestore URL 저장 -> UI 갱신)
+  void _pickAndUploadImage() async {
+    // 1. 로그인 상태 확인
+    if (_profileService.uid == null) {
+      _showSnackbar('로그인 정보가 없습니다.');
       return;
     }
 
-    // 1. 이미지 선택
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    // 2. 갤러리/파일 탐색기 열기 및 이미지 선택
+    final XFile? pickedFile = await _pickImageFromGallery();
 
-    if (pickedFile == null) return; // 이미지 선택 취소 시 종료
+    if (pickedFile != null) {
+      // 선택 성공 시: 로딩 시작 및 업로드 진행
+      if (mounted) setState(() { _isLoading = true; });
+      try {
+        final File imageFile = File(pickedFile.path);
 
-    if (mounted) setState(() { _isLoading = true; }); // 로딩 시작
+        // ProfileService를 이용해 Storage에 업로드 및 Firestore URL 저장
+        final newImageUrl = await _profileService.uploadProfileImage(imageFile);
 
-    try {
-      final file = File(pickedFile.path);
-      final fileName = 'profile_image_${user.uid}.jpg';
-      final storageRef = FirebaseStorage.instance.ref().child('user_profiles').child(fileName);
-
-      // 2. Firebase Storage에 업로드
-      await storageRef.putFile(file);
-
-      // 3. 다운로드 URL 획득
-      final downloadUrl = await storageRef.getDownloadURL();
-
-      // 4. Firestore에 URL 업데이트
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'profileImageUrl': downloadUrl,
-      });
-
-      // 5. 상태 업데이트 및 성공 메시지
-      if (mounted) {
-        setState(() {
-          _profileImageUrl = downloadUrl;
-          _isLoading = false;
-        });
+        // 3. 상태 갱신 (화면에 새 이미지 표시)
+        if (mounted) {
+          setState(() {
+            _profileImageUrl = newImageUrl;
+            _isLoading = false;
+          });
+        }
         _showSnackbar('프로필 이미지가 성공적으로 변경되었습니다.');
+      } catch (e) {
+        debugPrint("이미지 업로드/저장 오류: $e");
+        if (mounted) setState(() { _isLoading = false; });
+        _showSnackbar('이미지 업로드에 실패했습니다.');
       }
-    } on FirebaseException catch (e) {
-      debugPrint('Firebase 이미지 업로드/업데이트 오류: $e');
-      _showSnackbar('이미지 변경에 실패했습니다. (${e.message})');
-      if (mounted) setState(() { _isLoading = false; });
-    } catch (e) {
-      debugPrint('일반 이미지 업로드 오류: $e');
-      _showSnackbar('이미지 변경 중 알 수 없는 오류가 발생했습니다.');
-      if (mounted) setState(() { _isLoading = false; });
+    } else {
+      // 4. 선택 취소
+      _showSnackbar('이미지 선택이 취소되었습니다.');
     }
   }
 
