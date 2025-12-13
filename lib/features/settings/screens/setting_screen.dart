@@ -286,7 +286,7 @@ class _SettingScreenState extends State<SettingScreen> {
               ),
               const SizedBox(height: 4),
 
-              // 고정값 아니고 DB 메인 커뮤니티 이름이 뜸
+              // DB 메인 커뮤니티 이름이 뜸
               Text(
                 _currentCommunity,
                 style: const TextStyle(fontSize: 14, color: Colors.black54),

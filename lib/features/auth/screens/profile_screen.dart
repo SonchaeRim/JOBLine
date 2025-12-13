@@ -1,1 +1,0 @@
-//setting_screen.dart와 동일 코드라 삭제함
