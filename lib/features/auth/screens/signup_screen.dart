@@ -163,6 +163,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         label: const Text('가입취소'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey.shade800,
+                          foregroundColor: Colors.white,
                         ),
                       ),
                     ),
