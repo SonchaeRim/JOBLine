@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/certification.dart';
 
 /// 인증 이미지 위젯
@@ -14,7 +15,7 @@ class CertificationImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (imageUrl == null) {
+    if (imageUrl == null || imageUrl!.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -22,36 +23,27 @@ class CertificationImage extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: AspectRatio(
         aspectRatio: 210 / 297, // A4 비율
-        child: Image.network(
-          imageUrl!,
+        child: CachedNetworkImage(
+          imageUrl: imageUrl!,
           fit: BoxFit.cover,
           width: double.infinity,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: reviewStatus == ReviewStatus.approved
-                    ? Colors.green.shade100
-                    : reviewStatus == ReviewStatus.rejected
-                        ? Colors.red.shade100
-                        : Colors.orange.shade100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                reviewStatus == ReviewStatus.approved
-                    ? Icons.check
-                    : reviewStatus == ReviewStatus.rejected
-                        ? Icons.close
-                        : Icons.pending,
-                color: reviewStatus == ReviewStatus.approved
-                    ? Colors.green
-                    : reviewStatus == ReviewStatus.rejected
-                        ? Colors.red
-                        : Colors.orange,
-                size: 80,
-              ),
-            );
-          },
+          placeholder: (context, url) => _buildLoadingIndicator(),
+          errorWidget: (context, url, error) => _buildLoadingIndicator(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Center(
+        child: CircularProgressIndicator(
+          strokeWidth: 3,
         ),
       ),
     );
