@@ -29,7 +29,7 @@ class _MainScreenState extends State<MainScreen> {
     HomeScreen(onTabChanged: _onTab),
     const CalendarScreen(),
     const BoardTabsScreen(),
-    const ChatListScreen(),
+    ChatListScreen(),
     const SettingScreen(),
   ];
 

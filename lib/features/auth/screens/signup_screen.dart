@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:jobline/features/community/screens/category_select_screen.dart';
 import 'package:jobline/features/auth/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // ✅ 추가
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -19,6 +20,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController idController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final AuthService _authService = AuthService();
+
+  bool _loading = false; // ✅ 추가 (중복 클릭 방지)
 
   bool _isButtonEnabled() {
     return nicknameController.text.isNotEmpty &&
@@ -63,8 +66,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           obscureText: obscureText,
           decoration: InputDecoration(
             hintText: hintText,
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: Colors.grey.shade400),
@@ -94,6 +96,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   @override
+  void dispose() {
+    nicknameController.dispose();
+    birthDateController.dispose();
+    emailController.dispose();
+    idController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -109,7 +121,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         padding: const EdgeInsets.all(25.0),
         child: Form(
           key: _formKey,
-          onChanged: () => setState(() {}), // 입력 변화 시 버튼 활성화 갱신
+          onChanged: () => setState(() {}),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -117,22 +129,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 label: '닉네임',
                 controller: nicknameController,
                 hintText: '취뽀',
-                validator: (value) =>
-                value!.isEmpty ? '닉네임을 입력하세요' : null,
+                validator: (value) => value!.isEmpty ? '닉네임을 입력하세요' : null,
               ),
               _buildInputField(
                 label: '생년월일',
                 controller: birthDateController,
                 hintText: 'ex)031024',
-                validator: (value) =>
-                value!.isEmpty ? '생년월일을 입력하세요' : null,
+                validator: (value) => value!.isEmpty ? '생년월일을 입력하세요' : null,
               ),
               _buildInputField(
                 label: '이메일',
                 controller: emailController,
                 hintText: 'ex)you@example.com',
-                validator: (value) =>
-                value!.isEmpty ? '이메일을 입력하세요' : null,
+                validator: (value) => value!.isEmpty ? '이메일을 입력하세요' : null,
               ),
               _buildInputField(
                 label: '아이디',
@@ -156,8 +165,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     child: SizedBox(
                       height: 50,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context); // 가입취소 → 이전 화면
+                        onPressed: _loading
+                            ? null
+                            : () {
+                          Navigator.pop(context);
                         },
                         icon: const Icon(Icons.close),
                         label: const Text('가입취소'),
@@ -173,48 +184,64 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     child: SizedBox(
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: _isButtonEnabled()
-                            ? () async { // async 키워드 추가
-                          if (_formKey.currentState!.validate()) {
+                        // ✅ 수정: 로딩 중이면 비활성화
+                        onPressed: (_isButtonEnabled() && !_loading)
+                            ? () async {
+                          if (!_formKey.currentState!.validate()) return;
 
-                            try {
-                              await _authService.signUpWithEmail(
-                                email: emailController.text,
-                                password: passwordController.text,
-                                loginId: idController.text,
-                                nickname: nicknameController.text, // 닉네임을 nickname 필드에 저장
-                              );
+                          setState(() => _loading = true);
 
-                              // 회원가입 성공 시 다음 화면으로 이동
-                              if (context.mounted) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const CategorySelectScreen(),
-                                  ),
-                                );
-                              }
-                            } on FirebaseException catch (e) { // 해결된 FirebaseException 사용
-                              // Firebase 관련 오류 처리
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('회원가입 오류: ${e.message ?? "알 수 없는 Firebase 오류"}')),
-                                );
-                              }
-                            } catch (e) {
-                              // 기타 알 수 없는 오류 처리
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('알 수 없는 오류 발생: $e')),
-                                );
-                              }
-                            }
+                          try {
+                            await _authService.signUpWithEmail(
+                              email: emailController.text.trim(),
+                              password: passwordController.text.trim(),
+                              loginId: idController.text.trim(),
+                              nickname: nicknameController.text.trim(),
+                            );
+
+                            // ✅ 핵심: 회원가입 직후 인증 상태/토큰 확정 (Storage 403 예방)
+                            await FirebaseAuth.instance.currentUser?.reload();
+                            await FirebaseAuth.instance.currentUser?.getIdToken(true);
+
+                            if (!mounted) return;
+
+                            // ✅ 네비게이션(화면 이동): 회원가입 화면을 교체
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const CategorySelectScreen(),
+                              ),
+                            );
+                          } on FirebaseException catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('회원가입 오류: ${e.message ?? "알 수 없는 Firebase 오류"}'),
+                              ),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('알 수 없는 오류 발생: $e')),
+                            );
+                          } finally {
+                            if (mounted) setState(() => _loading = false);
                           }
                         }
                             : null,
-                        child: const Text('다음'),
+                        // ✅ 로딩 UI (선택이지만 추천)
+                        child: _loading
+                            ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                            : const Text('다음'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isButtonEnabled()
+                          backgroundColor: (_isButtonEnabled() && !_loading)
                               ? Colors.blue.shade600
                               : Colors.grey.shade400,
                         ),

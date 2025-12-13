@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -44,6 +45,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final _chatService = ChatService();
   final _picker = ImagePicker();
 
+  final _scrollController = ScrollController();
+  final _inputFocus = FocusNode();
+
+  int _lastMsgCount = 0;
+
   String get _myUid => FirebaseAuth.instance.currentUser!.uid;
 
   Future<void> _confirmLeaveRoom() async {
@@ -77,19 +83,82 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
     _messageController.clear();
     await _chatService.sendText(roomId: widget.roomId, text: text);
+
+    if (mounted) _inputFocus.requestFocus();
   }
 
+  // ✅ 여기만 수정됨: 실패 원인 보이게 + 업로드 중 UX
   Future<void> _sendImage() async {
     final x = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (x == null) return;
 
-    await _chatService.sendImage(roomId: widget.roomId, file: File(x.path));
+    try {
+      // (선택) 업로드 중 표시
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('사진 업로드 중...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      await _chatService.sendImage(roomId: widget.roomId, file: File(x.path));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      }
+    } catch (e) {
+      // ✅ 지금까지는 "안 보내짐"으로만 보였는데,
+      // 이제는 권한/규칙/경로 문제를 에러로 바로 확인 가능
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('사진 전송 실패: $e')),
+      );
+    }
+
+    if (mounted) _inputFocus.requestFocus();
+  }
+
+  void _scrollToBottom({bool animate = true}) {
+    if (!_scrollController.hasClients) return;
+
+    final target = _scrollController.position.maxScrollExtent;
+    if (animate) {
+      _scrollController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    } else {
+      _scrollController.jumpTo(target);
+    }
   }
 
   @override
   void dispose() {
     _messageController.dispose();
+    _scrollController.dispose();
+    _inputFocus.dispose();
     super.dispose();
+  }
+
+  String _senderName(ChatRoom? room, ChatMessage m) {
+    if (m.senderId == 'system') return 'system';
+    if (room == null) return m.senderId == _myUid ? '나' : '사용자';
+
+    final v = room.memberNicknames[m.senderId];
+    if (v is String && v.trim().isNotEmpty) return v.trim();
+    return m.senderId == _myUid ? '나' : '사용자';
+  }
+
+  String _senderPhotoUrl(ChatRoom? room, ChatMessage m) {
+    if (m.senderId == 'system' || room == null) return '';
+    final v = room.memberPhotoUrls[m.senderId];
+    if (v is String && v.trim().isNotEmpty) return v.trim();
+    return '';
   }
 
   @override
@@ -98,8 +167,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       stream: _chatService.watchRoom(widget.roomId),
       builder: (context, roomSnap) {
         final room = roomSnap.data;
-        final title = room == null ? widget.roomTitle : _titleForRoom(room);
 
+        final title = room == null ? widget.roomTitle : _titleForRoom(room);
         final headerPhotoUrl = room == null ? '' : _headerPhotoUrl(room);
         final headerSubtitle = room == null ? '' : _headerSubtitle(room);
 
@@ -148,7 +217,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           ),
           body: Column(
             children: [
-              // ✅ (8) 상단 공지 문구 (항상 고정)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -169,17 +237,32 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     final msgs = snap.data ?? [];
                     if (msgs.isEmpty) return const Center(child: Text('첫 메시지를 보내보세요.'));
 
+                    if (msgs.length != _lastMsgCount) {
+                      _lastMsgCount = msgs.length;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _scrollToBottom(animate: true);
+                      });
+                    }
+
                     return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      reverse: true,
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       itemCount: msgs.length,
                       itemBuilder: (context, index) {
                         final m = msgs[index];
                         final fromMe = m.senderId == _myUid;
 
+                        final prev = (index - 1 >= 0) ? msgs[index - 1] : null;
+                        final isFirstOfSequence = prev == null || prev.senderId != m.senderId;
+
+                        final showSenderInfo = !fromMe && isFirstOfSequence && m.type != 'system';
+
                         return MessageBubble(
                           message: m,
                           fromMe: fromMe,
+                          senderName: _senderName(room, m),
+                          senderPhotoUrl: _senderPhotoUrl(room, m),
+                          showSenderInfo: showSenderInfo,
                         );
                       },
                     );
@@ -199,17 +282,31 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                         onPressed: _sendImage,
                       ),
                       Expanded(
-                        child: TextField(
-                          controller: _messageController,
-                          minLines: 1,
-                          maxLines: 3,
-                          decoration: InputDecoration(
-                            hintText: '메시지를 입력하세요',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: RawKeyboardListener(
+                          focusNode: FocusNode(),
+                          onKey: (event) {
+                            if (event is RawKeyDownEvent) {
+                              final isEnter = event.logicalKey == LogicalKeyboardKey.enter ||
+                                  event.logicalKey == LogicalKeyboardKey.numpadEnter;
+                              if (isEnter && !event.isShiftPressed) {
+                                _sendMessage();
+                              }
+                            }
+                          },
+                          child: TextField(
+                            focusNode: _inputFocus,
+                            controller: _messageController,
+                            minLines: 1,
+                            maxLines: 3,
+                            textInputAction: TextInputAction.send,
+                            onSubmitted: (_) => _sendMessage(),
+                            decoration: InputDecoration(
+                              hintText: '메시지를 입력하세요',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
                           ),
-                          onSubmitted: (_) => _sendMessage(),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -229,16 +326,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   String _titleForRoom(ChatRoom room) {
-    if (!room.isGroup) {
-      for (final u in room.memberIds) {
-        if (u != _myUid) {
-          final n = room.memberNicknames[u];
-          if (n is String && n.isNotEmpty) return n;
-        }
-      }
-      return '채팅';
+    final others = <String>[];
+
+    for (final u in room.memberIds) {
+      if (u == _myUid) continue;
+      final n = room.memberNicknames[u];
+      if (n is String && n.trim().isNotEmpty) others.add(n.trim());
     }
-    return room.title.isEmpty ? '그룹 채팅' : room.title;
+
+    if (others.isNotEmpty) {
+      if (others.length <= 3) return others.join(', ');
+      final shown = others.take(3).join(', ');
+      return '$shown 외 ${others.length - 3}명';
+    }
+
+    final t = room.title.trim();
+    return t.isNotEmpty ? t : '채팅';
   }
 
   String _headerPhotoUrl(ChatRoom room) {
@@ -249,9 +352,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           if (url is String && url.isNotEmpty) return url;
         }
       }
-      return '';
     }
-    // 그룹은 대표 이미지 없음(원하면 첫 멤버로 넣어도 됨)
     return '';
   }
 
@@ -265,7 +366,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       }
       return '';
     }
-    // 그룹: 멤버 요약
+
     final names = <String>[];
     for (final u in room.memberIds) {
       if (u == _myUid) continue;
@@ -273,6 +374,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       if (n is String && n.isNotEmpty) names.add(n);
       if (names.length >= 2) break;
     }
+
     final head = names.isEmpty ? '멤버' : names.join(', ');
     return '$head 외 ${room.memberIds.length - 1}명';
   }
