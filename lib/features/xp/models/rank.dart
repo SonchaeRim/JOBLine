@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 /// 등급 시스템 정의
 enum Rank {
-  newbie(100, 'NEWBIE', Color(0xFFFFB6C1)), // 연한 핑크
-  bronze(200, 'BRONZE', Color(0xFFCD7F32)), // 구리색
-  silver(300, 'SILVER', Color(0xFFC0C0C0)), // 은색
-  gold(400, 'GOLD', Color(0xFFFFD700)), // 금색
-  vip(500, 'VIP', Color(0xFF00CED1)); // 청록색
+  newbie(0, 'NEWBIE', Color(0xFFFFB6C1)), // 연한 핑크
+  bronze(40, 'BRONZE', Color(0xFFCD7F32)), // 구리색
+  silver(100, 'SILVER', Color(0xFFC0C0C0)), // 은색
+  gold(200, 'GOLD', Color(0xFFFFD700)), // 금색
+  vip(400, 'VIP', Color(0xFF00CED1)); // 청록색
 
   final int requiredXp;
   final String name;

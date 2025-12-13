@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../features/challenge/screens/certification_history_screen.dart';
-import '../features/challenge/models/challenge.dart';
+import '../features/challenge/screens/certification_list_screen.dart';
+import '../features/challenge/screens/certification_detail_screen.dart';
+import '../features/challenge/screens/admin_user_list_screen.dart';
+import '../features/challenge/screens/admin_certification_list_screen.dart';
 import 'route_names.dart';
 
 import '../features/common/screens/splash_screen.dart'; // 앱 첫 실행 시 보여주는 스플래시 화면
@@ -88,24 +90,21 @@ import '../features/calendar/services/calendar_service.dart';
 
 
 // ========== 챌린지 / XP 영역 ==========
-import '../features/challenge/screens/challenge_list_screen.dart'; // 챌린지 메인 화면
+import '../features/challenge/screens/challenge_screen.dart'; // 챌린지 메인 화면
 // 홈 화면에서 "챌린지 등록" 버튼을 누르면 나오는 화면
 // 상단 : "심사기준 확인하기" 버튼, 현재 검토 중인 사진 상황
 // 가운데 : "사진 인증하기", "인증 내역 확인하기" 버튼
 // 하단 : 레벨별 배지 카드(NEWBIE~VIP)가 나열되어 현재 등급과 다음 등급 기준을 시각적으로 보여줌
-// - "사진 인증하기" → ProofCameraScreen 으로 이동
+// - "사진 인증하기" → PhotoProofCameraScreen 으로 이동
 // - "인증 내역 확인하기" → ChallengeDetailScreen 으로 이동
 
-import '../features/challenge/screens/challenge_detail_screen.dart'; // 인증 내역 화면
-// ChallengeListScreen에서 "인증 내역 확인하기" 버튼을 누르면 진입
-
-import '../features/challenge/screens/proof_camera_screen.dart'; // 챌린지 증빙 사진 촬영/업로드 화면
+import '../features/challenge/screens/photo_proof_camera_screen.dart';
+import '../features/challenge/screens/review_criteria_screen.dart';
 // 카메라/갤러리에서 이미지 선택
-// ChallengeListScreen에서 "사진 인증하기" 버튼을 누르면 진입
-// 사진 촬영이 성공하면 서버/관리자 검토 이후 상태(검토 중/반려/성공)는 ChallengeListScreen에서 메시지로 노출
+// ChallengeScreen에서 "사진 인증하기" 버튼을 누르면 진입
+// 사진 촬영이 성공하면 서버/관리자 검토 이후 상태(검토 중/반려/성공)는 ChallengeScreen에서 메시지로 노출
 
 // import '../features/challenge/models/challenge.dart'; -> 챌린지 전체에 대한 정보 모델 (제목, 설명, 보상 XP 등)
-// import '../features/challenge/models/proof_result.dart'; -> 사용자가 올린 인증 사진 하나가 가지고 있는 정보 모델 (어떤 챌린지 인증인지, 어떤 유저가 올렸는지, 상태 등)
 // import '../features/challenge/services/challenge_service.dart'; -> 내 현재 레벨/경험치 조회, 챌린지 목록/상세 조회, 레벨업 조건 계산 로직
 // import '../features/challenge/services/proof_service.dart'; -> 사용자가 올린 사진을 처리하는 핵심 로직 (올린 사진을 검토하고 경험치 지급을 책임짐)
 
@@ -211,7 +210,7 @@ class AppRoutes {
     RouteNames.chat: (context) => const ChatListScreen(),
 
     // --- 챌린지 루트 ---
-    RouteNames.challenge: (context) => const ChallengeListScreen(),
+    RouteNames.challenge: (context) => const ChallengeScreen(),
 
     // --- 설정 루트 & 설정 하위 화면들 ---
     RouteNames.settings:        (context) => const SettingScreen(),
@@ -302,80 +301,88 @@ class AppRoutes {
       }
 
 
-
-    // ------------- 챌린지 상세 & 증빙 업로드 -------------
-      case RouteNames.challengeDetail: {
-        // arguments로 Map 또는 Challenge 객체 직접 전달 가능
-        // Map 형태: {'challenge': Challenge 객체, 'userId': String}
-        // 또는 Challenge 객체 직접 전달 시 Map으로 감싸서 전달
-        final args = settings.arguments;
-
-        Challenge? challenge;
-        String? userId;
-
-        if (args is Map<String, dynamic>) {
-          challenge = args['challenge'] as Challenge?;
-          userId = args['userId'] as String?;
-        } else if (args is Challenge) {
-          // Challenge 객체만 전달된 경우 (임시로 테스트용)
-          challenge = args;
-          userId = null;
-        }
-
-        if (challenge == null || userId == null) {
-          return MaterialPageRoute(
-            builder: (_) => const ErrorScreen(unknownRouteName: 'challengeDetail: challenge or userId missing'),
-            settings: settings,
-          );
-        }
-
-        // null 체크 후 non-null 단언 (안전함 - 위에서 이미 체크함)
-        return MaterialPageRoute(
-          builder: (_) => ChallengeDetailScreen(
-            challenge: challenge!,
-            userId: userId!,
-          ),
-          settings: settings,
-        );
-      }
-
-      case RouteNames.certificationHistory: {
-        final uid = settings.arguments as String?; // 또는 Map 받아서 uid 꺼내도 됨
-        if (uid == null) {
-          return MaterialPageRoute(
-            builder: (_) => const ErrorScreen(unknownRouteName: 'certificationHistory: uid missing'),
-            settings: settings,
-          );
-        }
-        return MaterialPageRoute(
-          builder: (_) => CertificationHistoryScreen(userId: uid),
-          settings: settings,
-        );
-      }
-
-
-      case RouteNames.proofCamera: {
-        // arguments로 Map 형태로 {'challengeId': String, 'userId': String} 전달
+    // ------------- 챌린지 인증 내역 확인 -------------
+      case RouteNames.proofList: {
         final args = settings.arguments as Map<String, dynamic>?;
-
-        final challengeId = args?['challengeId'] as String?;
         final userId = args?['userId'] as String?;
 
-        if (challengeId == null || userId == null) {
+        if (userId == null) {
           return MaterialPageRoute(
-            builder: (_) => const ErrorScreen(unknownRouteName: 'proofCamera: challengeId or userId missing'),
+            builder: (_) => const ErrorScreen(unknownRouteName: 'proofList: userId missing'),
+            settings: settings,
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => CertificationListScreen(userId: userId),
+          settings: settings,
+        );
+      }
+
+      case RouteNames.photoProof: {
+        final args = settings.arguments as Map<String, dynamic>?;
+        final userId = args?['userId'] as String?;
+
+        if (userId == null) {
+          return MaterialPageRoute(
+            builder: (_) => const ErrorScreen(unknownRouteName: 'photoProof: userId missing'),
             settings: settings,
           );
         }
 
         return MaterialPageRoute(
-          builder: (_) => ProofCameraScreen(
-            challengeId: challengeId,
+          builder: (_) => PhotoProofCameraScreen(
             userId: userId,
           ),
           settings: settings,
         );
       }
+
+      case RouteNames.proofDetail: {
+        final args = settings.arguments as Map<String, dynamic>?;
+        final certificationId = args?['certificationId'] as String?;
+
+        if (certificationId == null) {
+          return MaterialPageRoute(
+            builder: (_) => const ErrorScreen(unknownRouteName: 'proofDetail: certificationId missing'),
+            settings: settings,
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => CertificationDetailScreen(certificationId: certificationId),
+          settings: settings,
+        );
+      }
+
+      case RouteNames.reviewCriteria:
+        return MaterialPageRoute(
+          builder: (_) => const ReviewCriteriaScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.adminUserList:
+        return MaterialPageRoute(
+          builder: (_) => const AdminUserListScreen(),
+          settings: settings,
+        );
+
+      case RouteNames.adminCertificationList: {
+        final args = settings.arguments as Map<String, dynamic>?;
+        if (args != null && args['userId'] != null && args['userName'] != null) {
+          return MaterialPageRoute(
+            builder: (_) => AdminCertificationListScreen(
+              userId: args['userId'] as String,
+              userName: args['userName'] as String,
+            ),
+            settings: settings,
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => const ErrorScreen(unknownRouteName: 'adminCertificationList: userId or userName missing'),
+          settings: settings,
+        );
+      }
+
+
 
     // ------------- 채팅방 / 새 채팅 -------------
       case RouteNames.chat:

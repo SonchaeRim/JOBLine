@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/schedule.dart';
 import '../services/calendar_service.dart';
 import '../services/fcm_notification_service.dart';
@@ -56,8 +55,10 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
       _descriptionController =
           TextEditingController(text: widget.schedule!.description ?? '');
       
-      _selectedDate = widget.schedule!.startDate;
-      _selectedTime = TimeOfDay.fromDateTime(widget.schedule!.startDate);
+      // UTC로 저장된 시간을 로컬 시간으로 변환하여 표시
+      final startDateLocal = widget.schedule!.startDate.toLocal();
+      _selectedDate = startDateLocal;
+      _selectedTime = TimeOfDay.fromDateTime(startDateLocal);
       
       _isDeadline = widget.schedule!.isDeadline;
       _hasNotification = widget.schedule!.hasNotification;
@@ -128,7 +129,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     });
 
     try {
-      // DateTime(year, month, day, hour, minute)는 기본적으로 "로컬 시간"으로 생성됨
+      // 사용자가 선택한 로컬 시간을 UTC로 변환하여 저장
       final DateTime startLocal = DateTime(
         _selectedDate.year,
         _selectedDate.month,
@@ -136,8 +137,10 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         _selectedTime.hour,
         _selectedTime.minute,
       );
+      // UTC로 변환
+      final DateTime startUtc = startLocal.toUtc();
 
-      final now = DateTime.now();
+      final now = DateTime.now().toUtc();
 
       final schedule = Schedule(
         id: widget.schedule?.id ?? '',
@@ -145,7 +148,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
-        startDate: startLocal, // ← 이거 하나만 신경 쓰면 됨
+        startDate: startUtc, // UTC로 저장
         ownerId: widget.userId,
         createdAt: widget.schedule?.createdAt ?? now,
         updatedAt: now,
@@ -205,6 +208,64 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
             const SnackBar(content: Text('일정이 수정되었습니다.')),
           );
         }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('오류: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleNotification() async {
+    if (widget.schedule == null || _isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final scheduleId = widget.schedule!.id;
+      final newNotificationState = !_hasNotification;
+
+      // 기존 알림 삭제
+      if (_hasNotification) {
+        await _notificationService.cancelScheduleNotification(scheduleId);
+      }
+
+      // 일정 업데이트
+      final updatedSchedule = widget.schedule!.copyWith(
+        hasNotification: newNotificationState,
+        updatedAt: DateTime.now().toUtc(),
+      );
+      await widget.calendarService.updateSchedule(scheduleId, updatedSchedule);
+
+      // 알림 켜기
+      if (newNotificationState) {
+        await _notificationService.scheduleScheduleNotification(updatedSchedule);
+      }
+
+      if (mounted) {
+        setState(() {
+          _hasNotification = newNotificationState;
+          // widget.schedule도 업데이트된 값으로 갱신
+          if (widget.schedule != null) {
+            // widget.schedule은 final이므로 직접 수정할 수 없지만,
+            // _hasNotification 상태 변수로 UI는 업데이트됨
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(newNotificationState ? '알림이 켜졌습니다.' : '알림이 꺼졌습니다.'),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -380,7 +441,11 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                       Icon(Icons.calendar_today, size: 20, color: Colors.grey.shade600),
                       const SizedBox(width: 8),
                       Text(
-                        DateFormat('yyyy년 M월 d일', 'ko_KR').format(startDate),
+                        DateFormat('yyyy년 M월 d일', 'ko_KR').format(
+                          widget.schedule != null 
+                            ? widget.schedule!.startDate.toLocal() 
+                            : _selectedDate
+                        ),
                         style: const TextStyle(
                           fontSize: 16,
                         ),
@@ -469,9 +534,17 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Icon(
-                    _hasNotification ? Icons.notifications : Icons.notifications_off,
-                    color: _hasNotification ? Colors.blue : Colors.grey,
+                  InkWell(
+                    onTap: _isLoading ? null : _toggleNotification,
+                    borderRadius: BorderRadius.circular(24),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(
+                        _hasNotification ? Icons.notifications : Icons.notifications_off,
+                        color: _hasNotification ? Colors.blue : Colors.grey,
+                        size: 28,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -516,16 +589,23 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     return Form(
       key: _formKey,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 제목
+            const Text(
+              '제목 *',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 8),
             TextFormField(
               controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: '제목 *',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: '제목을 입력하세요',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -534,53 +614,81 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 25),
             // 날짜 선택
+            const Text(
+              '날짜 *',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 8),
             InkWell(
               onTap: _selectDate,
               child: InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: '날짜 *',
-                  border: OutlineInputBorder(),
-                  suffixIcon: Icon(Icons.calendar_today),
+                decoration: InputDecoration(
+                  hintText: '날짜를 선택하세요',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  suffixIcon: const Icon(Icons.calendar_today),
                 ),
                 child: Text(
                   DateFormat('yyyy년 M월 d일', 'ko_KR').format(_selectedDate),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 25),
             // 시간 선택
+            const Text(
+              '시간 *',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 8),
             InkWell(
               onTap: _selectTime,
               child: InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: '시간 *',
-                  border: OutlineInputBorder(),
-                  suffixIcon: Icon(Icons.access_time),
+                decoration: InputDecoration(
+                  hintText: '시간을 선택하세요',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  suffixIcon: const Icon(Icons.access_time),
                 ),
                 child: Text(
                   _formatTime(_selectedTime),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 25),
             // 설명
+            const Text(
+              '설명',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 8),
             TextFormField(
               controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: '설명',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: '설명을 입력하세요',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               maxLines: 3,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 25),
             // 카테고리
+            const Text(
+              '카테고리',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               value: _category,
-              decoration: const InputDecoration(
-                labelText: '카테고리',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: '카테고리를 선택하세요',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               items: [
                 const DropdownMenuItem<String>(
@@ -600,7 +708,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                 });
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 25),
             // 알림 설정
             CheckboxListTile(
               title: const Text('알림 받기'),
@@ -617,6 +725,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                   _hasNotification = value ?? false;
                 });
               },
+              contentPadding: EdgeInsets.zero,
             ),
             const SizedBox(height: 32),
             // 저장 버튼
@@ -624,22 +733,25 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               onPressed: _isLoading ? null : _saveSchedule,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: _isLoading
                   ? const SizedBox(
-                      height: 20,
-                      width: 20,
+                      width: 24,
+                      height: 24,
                       child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white),
+                        color: Colors.white,
+                        strokeWidth: 3,
                       ),
                     )
                   : const Text(
                       '저장',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -665,9 +777,22 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                           _category = widget.schedule!.category;
                         });
                       },
-                child: const Text('취소'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  '취소',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
+            const SizedBox(height: 20), // 하단 여백
           ],
         ),
       ),

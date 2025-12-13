@@ -1,15 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// 일정 데이터 모델
+/// 
+/// 모든 DateTime은 UTC로 저장하고, 표시할 때만 로컬 시간으로 변환합니다.
 class Schedule {
   final String id;
   final String title;
   final String? description;
-  final DateTime startDate;      // 항상 로컬(Asia/Seoul) 기준
-  final DateTime? endDate;       // 항상 로컬
+  final DateTime startDate;      // UTC 기준으로 저장
+  final DateTime? endDate;       // UTC 기준으로 저장
   final String ownerId;
-  final DateTime createdAt;      // 항상 로컬
-  final DateTime updatedAt;      // 항상 로컬
+  final DateTime createdAt;      // UTC 기준으로 저장
+  final DateTime updatedAt;      // UTC 기준으로 저장
   final bool isDeadline;
   final String? category;
   final bool hasNotification;
@@ -29,6 +31,7 @@ class Schedule {
   });
 
   /// Firestore → Schedule
+  /// Firestore의 Timestamp는 UTC로 저장되어 있으므로 UTC DateTime으로 변환
   factory Schedule.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
 
@@ -37,30 +40,30 @@ class Schedule {
     final startDateTs = data['startDate'] as Timestamp?;
     final endDateTs   = data['endDate']   as Timestamp?;
 
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
 
-    // Firestore Timestamp.toDate()는 보통 UTC DateTime을 반환하니까
-    // 앱 안에서는 무조건 .toLocal() 해서 로컬 시간으로만 들고 다닌다.
-    DateTime _toLocal(Timestamp? ts) {
+    // Firestore Timestamp.toDate()는 UTC DateTime을 반환
+    // UTC로 유지 (표시할 때만 로컬로 변환)
+    DateTime _toUtc(Timestamp? ts) {
       if (ts == null) return now;
       final d = ts.toDate();
-      return d.isUtc ? d.toLocal() : d;
+      return d.isUtc ? d : d.toUtc();
     }
 
-    final startDateLocal   = startDateTs != null ? _toLocal(startDateTs) : now;
-    final endDateLocal     = endDateTs   != null ? _toLocal(endDateTs)   : null;
-    final createdAtLocal   = createdAtTs != null ? _toLocal(createdAtTs) : now;
-    final updatedAtLocal   = updatedAtTs != null ? _toLocal(updatedAtTs) : now;
+    final startDateUtc   = startDateTs != null ? _toUtc(startDateTs) : now;
+    final endDateUtc     = endDateTs   != null ? _toUtc(endDateTs)   : null;
+    final createdAtUtc   = createdAtTs != null ? _toUtc(createdAtTs) : now;
+    final updatedAtUtc   = updatedAtTs != null ? _toUtc(updatedAtTs) : now;
 
     return Schedule(
       id: doc.id,
       title: data['title'] as String? ?? '',
       description: data['description'] as String?,
-      startDate: startDateLocal,
-      endDate: endDateLocal,
+      startDate: startDateUtc,
+      endDate: endDateUtc,
       ownerId: data['ownerId'] as String? ?? '',
-      createdAt: createdAtLocal,
-      updatedAt: updatedAtLocal,
+      createdAt: createdAtUtc,
+      updatedAt: updatedAtUtc,
       isDeadline: data['isDeadline'] as bool? ?? false,
       category: data['category'] as String?,
       hasNotification: data['hasNotification'] as bool? ?? false,
@@ -68,24 +71,26 @@ class Schedule {
   }
 
   /// Schedule → Firestore
+  /// 모델 내부의 DateTime은 UTC이므로 그대로 저장
+  /// Timestamp.fromDate()는 UTC DateTime을 UTC Timestamp로 변환
   Map<String, dynamic> toFirestore() {
-    // 👉 규칙: 모델 안의 DateTime은 항상 “로컬 시간”이라고 가정하고
-    // 저장할 땐 그냥 .toLocal()만 한 번 호출해서 넘긴다.
-    // (local → toLocal()은 변화 없음, utc → local은 한 번만 보정)
+    // DateTime을 명시적으로 UTC로 변환하여 저장
+    // (이미 UTC여도 안전하게 변환)
+    final startUtc   = startDate.isUtc ? startDate : startDate.toUtc();
+    final endUtc     = endDate != null ? (endDate!.isUtc ? endDate! : endDate!.toUtc()) : null;
+    final createdUtc = createdAt.isUtc ? createdAt : createdAt.toUtc();
+    final updatedUtc = updatedAt.isUtc ? updatedAt : updatedAt.toUtc();
 
-    final startLocal   = startDate.toLocal();
-    final endLocal     = endDate?.toLocal();
-    final createdLocal = createdAt.toLocal();
-    final updatedLocal = updatedAt.toLocal();
-
+    // Timestamp.fromDate()는 UTC DateTime을 UTC Timestamp로 변환
+    // Firestore에 저장될 때는 항상 UTC로 저장됨
     return {
       'title': title,
       'description': description,
-      'startDate': Timestamp.fromDate(startLocal),
-      'endDate': endLocal != null ? Timestamp.fromDate(endLocal) : null,
+      'startDate': Timestamp.fromDate(startUtc),
+      'endDate': endUtc != null ? Timestamp.fromDate(endUtc) : null,
       'ownerId': ownerId,
-      'createdAt': Timestamp.fromDate(createdLocal),
-      'updatedAt': Timestamp.fromDate(updatedLocal),
+      'createdAt': Timestamp.fromDate(createdUtc),
+      'updatedAt': Timestamp.fromDate(updatedUtc),
       'isDeadline': isDeadline,
       'category': category,
       'hasNotification': hasNotification,

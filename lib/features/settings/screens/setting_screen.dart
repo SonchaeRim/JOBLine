@@ -78,6 +78,7 @@ class _SettingScreenState extends State<SettingScreen> {
         // 닉네임 및 ID 처리
         final nickname = (data['nickname'] ?? '닉네임 없음').toString();
 
+        // name 말고 loginId로
         final userId = (data['loginId'] ?? 'ID 없음').toString();
 
         final imageUrl = data['profileImageUrl'] as String?;
@@ -285,6 +286,7 @@ class _SettingScreenState extends State<SettingScreen> {
               ),
               const SizedBox(height: 4),
 
+              // 고정값 아니고 DB 메인 커뮤니티 이름이 뜸
               Text(
                 _currentCommunity,
                 style: const TextStyle(fontSize: 14, color: Colors.black54),
