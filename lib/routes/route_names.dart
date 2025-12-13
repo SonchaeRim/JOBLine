@@ -26,9 +26,12 @@ class RouteNames {
   static const String postEditor = '/home/board/editor';
 
   // ========== 챌린지 ==========
-  static const String challengeDetail      = '/home/challenge/detail';
-  static const String proofCamera          = '/home/challenge/proof-camera';
-  static const String certificationHistory = '/home/challenge/history';
+  static const String photoProof = '/home/challenge/photo-proof';
+  static const String proofList = '/home/challenge/proof-list';
+  static const String proofDetail = '/home/challenge/proof-detail';
+  static const String reviewCriteria = '/home/challenge/review-criteria';
+  static const String adminUserList = '/home/challenge/admin/user-list';
+  static const String adminCertificationList = '/home/challenge/admin/certification-list';
 
   // ========== 채팅 ==========
   static const String chatRoom = '/home/chat/room';

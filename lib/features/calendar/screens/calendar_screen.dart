@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/schedule.dart';
 import '../services/calendar_service.dart';
 import '../services/fcm_notification_service.dart';
@@ -18,7 +19,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   final FcmNotificationService _notificationService = FcmNotificationService();
   DateTime _selectedDate = DateTime.now();
   DateTime _currentMonth = DateTime.now();
-  String? _currentUserId; // TODO: 실제 사용자 ID로 교체 (B 담당과 협업)
+  String? _currentUserId;
   String? _selectedCategory; // 선택된 카테고리 필터 (null이면 모든 일정)
 
   final List<String> _categories = [
@@ -32,8 +33,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
-    // TODO: 실제 사용자 인증 연동 (B 담당과 협업)
-    _currentUserId = 'test_user_12345'; // 테스트용
+    // Firebase Auth에서 현재 사용자 ID 가져오기
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      _currentUserId = currentUser.uid;
+    }
   }
 
   @override
@@ -288,7 +292,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                         }).toList();
                                   
                                   final hasSchedule = filteredSchedules.any((schedule) {
-                                    return _isSameDay(schedule.startDate, cellDate);
+                                    // UTC로 저장된 시간을 로컬로 변환하여 비교
+                                    final scheduleDateLocal = schedule.startDate.toLocal();
+                                    return _isSameDay(scheduleDateLocal, cellDate);
                                   });
                                   if (hasSchedule) {
                                     return Container(
@@ -393,7 +399,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
         final schedules = snapshot.data ?? [];
         var selectedDateSchedules = schedules.where((schedule) {
-          return _isSameDay(schedule.startDate, _selectedDate);
+          // UTC로 저장된 시간을 로컬로 변환하여 비교
+          final scheduleDateLocal = schedule.startDate.toLocal();
+          return _isSameDay(scheduleDateLocal, _selectedDate);
         }).toList();
         
         // 카테고리 필터 적용
@@ -481,13 +489,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildScheduleItem(Schedule schedule) {
+    // UTC로 저장된 시간을 로컬로 변환하여 표시
+    final scheduleDateLocal = schedule.startDate.toLocal();
+    
     // 오늘 날짜 기준으로 D-Day 계산
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final scheduleDate = DateTime(
-      schedule.startDate.year,
-      schedule.startDate.month,
-      schedule.startDate.day,
+      scheduleDateLocal.year,
+      scheduleDateLocal.month,
+      scheduleDateLocal.day,
     );
     final daysUntil = scheduleDate.difference(today).inDays;
     
@@ -508,9 +519,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       deadlineColor = daysUntil <= 3 ? Colors.red : Colors.orange;
     }
 
-    // 시간 포맷팅 (한글 오전/오후 형식)
-    final hour = schedule.startDate.hour;
-    final minute = schedule.startDate.minute;
+    // 시간 포맷팅 (한글 오전/오후 형식) - 로컬 시간 사용
+    final hour = scheduleDateLocal.hour;
+    final minute = scheduleDateLocal.minute;
     final period = hour >= 12 ? '오후' : '오전';
     final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
     final timeText = '$period ${displayHour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
