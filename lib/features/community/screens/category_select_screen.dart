@@ -40,7 +40,7 @@ class _CategorySelectScreenState extends State<CategorySelectScreen> {
       return;
     }
 
-    // ✅ 현재 로그인 유저 uid 가져오기
+    // 현재 로그인 유저 uid 가져오기
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -50,7 +50,7 @@ class _CategorySelectScreenState extends State<CategorySelectScreen> {
     }
 
     try {
-      // ✅ demoUid 말고 진짜 uid로 저장
+      //uid로 저장
       await _svc.setMainCommunityId(user.uid, _selectedId!);
 
       if (!mounted) return;

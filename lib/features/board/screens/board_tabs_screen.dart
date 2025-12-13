@@ -15,7 +15,7 @@ class BoardTabsScreen extends StatelessWidget {
     {'id': 'spec',   'title': '스펙 게시판',            'icon': Icons.push_pin},
   ];
 
-  // ✅ 유저 문서에서 mainCommunityId를 실시간으로 구독
+  // 유저 문서에서 mainCommunityId를 실시간으로 구독
   Stream<String?> _mainCommunityIdStream() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -73,7 +73,7 @@ class BoardTabsScreen extends StatelessWidget {
           );
         }
 
-        // ✅ communityId가 있으면 기존 UI + 누를 때 communityId 같이 넘김
+        // communityId가 있으면 기존 UI + 누를 때 communityId 같이 넘김
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Column(
