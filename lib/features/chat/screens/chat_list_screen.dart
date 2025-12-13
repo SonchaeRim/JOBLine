@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../routes/route_names.dart';
@@ -21,6 +22,17 @@ class ChatListScreen extends StatelessWidget {
     return room.title.isEmpty ? '그룹 채팅' : room.title;
   }
 
+  String _roomPhotoForMe(ChatRoom room, String myUid) {
+    if (!room.isGroup) {
+      for (final uid in room.memberIds) {
+        if (uid != myUid) {
+          final url = room.memberPhotoUrls[uid];
+          if (url is String && url.isNotEmpty) return url;
+        }
+      }
+    }
+    return '';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,8 +40,6 @@ class ChatListScreen extends StatelessWidget {
     final myUid = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
-      // MainScreen이 Scaffold 제공 안 하는 구조면 이 Scaffold 유지.
-      // 이미 제공한다면 Scaffold 제거하고 body만 반환해도 됨.
       appBar: AppBar(
         title: const Text('채팅'),
         actions: [
@@ -59,14 +69,17 @@ class ChatListScreen extends StatelessWidget {
               final room = rooms[index];
               final title = _roomTitleForMe(room, myUid);
               final last = room.lastMessage.isEmpty ? '대화를 시작해보세요' : room.lastMessage;
+              final photoUrl = _roomPhotoForMe(room, myUid);
 
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: Colors.grey[300],
-                  child: Text(
-                    title.characters.first,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage: photoUrl.isEmpty
+                      ? null
+                      : CachedNetworkImageProvider(photoUrl),
+                  child: photoUrl.isEmpty
+                      ? Text(title.characters.first, style: const TextStyle(fontWeight: FontWeight.bold))
+                      : null,
                 ),
                 title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: Text(last, maxLines: 1, overflow: TextOverflow.ellipsis),
