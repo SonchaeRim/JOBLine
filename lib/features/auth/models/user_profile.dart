@@ -8,7 +8,7 @@ class UserModel{
     final String photoUrl;
     final String mainCommunituId;
 
-    //2. 필수로 받아야하는 값
+    // 필수로 받아야하는 값
     UserModel({
       required this.uid,
       required this.email,

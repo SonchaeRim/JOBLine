@@ -30,13 +30,6 @@ import '../features/auth/screens/signup_screen.dart'; // 회원가입 화면
 // 이름, 생년월일, 이메일, 아이디, 닉네임, 비밀번호 등 입력
 // 가입 성공 후 관심 분야/커뮤니티 배정을 위해 community 쪽으로 연결
 
-// Auth 관련 서비스/모델 (route는 아니지만 어떤 기능인지)
-// import '../features/auth/models/user_profile.dart'; -> 유저 프로필 데이터 모델 (닉네임, 학교, 전공, 관심분야, 경험치 등)
-// import '../features/auth/services/auth_service.dart'; -> 로그인/로그아웃/회원가입 등 인증 로직
-// import '../features/auth/services/profile_service.dart'; -> 프로필 조회/수정, 프로필 이미지 업로드 등
-// import '../features/auth/widgets/error_banner.dart'; -> 로그인/회원가입 에러 메시지 표시용 배너 위젯
-
-
 // ========== 커뮤니티 영역 ==========
 import '../features/community/screens/category_select_screen.dart'; // 회원가입 이후 관심 분야 기반으로 커뮤니티 카테고리 선택하는 화면
 // 개발/IT, 디자인/예술, 공기업 등 관심있는 커뮤니티의 카테고리 선택하면 "이 커뮤니티에 가입하시겠습니까?" 다이얼로그 표시
@@ -82,12 +75,6 @@ import '../features/calendar/screens/schedule_detail_screen.dart'; // 일정 상
 import '../features/calendar/models/schedule.dart';
 import '../features/calendar/services/calendar_service.dart';
 
-// import '../features/calendar/models/schedule.dart'; -> 일정 데이터 모델 (title, dateTime, category, link 등)
-// import '../features/calendar/services/calendar_service.dart'; -> 일정 등록/수정/삭제, 목록 조회 로직
-// import '../features/calendar/services/deadline_alarm_service.dart'; -> 마감 하루 전 알림 등록/관리
-// import '../features/calendar/services/like_service.dart'; -> 일정 "관심" 토글 처리
-// import '../features/calendar/widgets/month_view.dart'; -> 달력을 실제로 그려주는 위젯
-
 
 // ========== 챌린지 / XP 영역 ==========
 import '../features/challenge/screens/challenge_screen.dart'; // 챌린지 메인 화면
@@ -103,10 +90,6 @@ import '../features/challenge/screens/review_criteria_screen.dart';
 // 카메라/갤러리에서 이미지 선택
 // ChallengeScreen에서 "사진 인증하기" 버튼을 누르면 진입
 // 사진 촬영이 성공하면 서버/관리자 검토 이후 상태(검토 중/반려/성공)는 ChallengeScreen에서 메시지로 노출
-
-// import '../features/challenge/models/challenge.dart'; -> 챌린지 전체에 대한 정보 모델 (제목, 설명, 보상 XP 등)
-// import '../features/challenge/services/challenge_service.dart'; -> 내 현재 레벨/경험치 조회, 챌린지 목록/상세 조회, 레벨업 조건 계산 로직
-// import '../features/challenge/services/proof_service.dart'; -> 사용자가 올린 사진을 처리하는 핵심 로직 (올린 사진을 검토하고 경험치 지급을 책임짐)
 
 
 // ========= 채팅 영역 =========
@@ -125,12 +108,6 @@ import '../features/chat/screens/new_chat_screen.dart'; // 새 채팅방 생성 
 // 중앙 : 닉네임 + 아이디로 사용자 검색
 // 하단 : 검색에 맞는 사용자들 리스트 표시
 // 참여자를 선택한 뒤 "채팅방 생성"을 하면 새로운 채팅방을 만들고 ChatRoomScreen 으로 이동
-
-// import '../features/chat/models/chat_room.dart'; -> 채팅방 메타데이터 (참여자 목록, 방 제목 등)
-// import '../features/chat/models/message.dart'; -> 개별 메시지 데이터 (senderId, text, createdAt 등)
-// import '../features/chat/services/chat_service.dart'; -> 메시지 송수신, Firestore/Realtime DB 연동
-// import '../features/chat/services/block_service.dart'; -> 사용자 차단/해제 처리
-// import '../features/chat/widgets/message_bubble.dart'; -> 채팅방에서 각 메시지를 말풍선 UI로 그려주는 위젯
 
 
 // ========= 설정 영역 =========
@@ -214,8 +191,6 @@ class AppRoutes {
 
     // --- 설정 루트 & 설정 하위 화면들 ---
     RouteNames.settings:        (context) => const SettingScreen(),
-    // [설정 > 계정 > 아이디 변경]
-    RouteNames.idChange:        (context) => const IdChangeScreen(),
     // [설정 > 계정 > 비밀번호 변경]
     RouteNames.passwordChange:  (context) => const PasswordChangeScreen(),
     // [설정 > 계정 > 닉네임 변경]
@@ -228,16 +203,7 @@ class AppRoutes {
     RouteNames.myComments:      (context) => const MyCommentsScreen(),
   };
 
-  /// arguments(게시글/챌린지/채팅방 ID 등)가 필요한 화면을 처리하는 곳.
-  ///
-  /// 예)
-  /// ```dart
-  /// Navigator.pushNamed(
-  ///   context,
-  ///   RouteNames.postDetail,
-  ///   arguments: post,   // 또는 postId
-  /// );
-  /// ```
+
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
 

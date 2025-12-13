@@ -25,7 +25,6 @@ class _SettingScreenState extends State<SettingScreen> {
 
   List<String> _certifications = [];
 
-  // ✅ (변경) final -> 상태로 바꿈. DB에서 mainCommunityId로 읽어서 여기에 넣을거임.
   String _currentCommunity = '미설정';
 
   final String _currentRank = 'SILVER';
@@ -36,7 +35,7 @@ class _SettingScreenState extends State<SettingScreen> {
     _loadUserProfile();
   }
 
-  // ✅ users/{uid}.mainCommunityId -> communities/{id}.name 가져오는 함수
+  // users/{uid}.mainCommunityId -> communities/{id}.name 가져오는 함수
   Future<String> _loadCommunityName(String mainId) async {
     if (mainId.isEmpty) return '미설정';
 
@@ -210,7 +209,7 @@ class _SettingScreenState extends State<SettingScreen> {
 
   Widget _buildProfileCard() {
     final String nickname = _displayName;
-
+    // 이메일 ID의 뒷 4자리를 추출
     final String displaySuffix =
     _authService.currentUserId != null && _authService.currentUserId!.length > 4
         ? _authService.currentUserId!.substring(_authService.currentUserId!.length - 4)
@@ -475,7 +474,11 @@ class _SettingScreenState extends State<SettingScreen> {
 
             _buildMenuItem(
               title: '닉네임 변경',
-              onTap: () => Navigator.pushNamed(context, RouteNames.nicknameChange),
+              onTap: () async {
+              // 변경 화면 갔다가 돌아오면 다시 로드해서 반영되게
+              await Navigator.pushNamed(context, RouteNames.nicknameChange);
+              await _loadUserProfile();
+              },
             ),
             const Divider(color: Colors.black12, height: 1),
 

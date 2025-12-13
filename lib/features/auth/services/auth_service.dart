@@ -85,7 +85,7 @@ class AuthService {
     }
   }
 
-  // 로그아웃 함수-
+  // 로그아웃 함수
   Future<void> signOut() async {
     try {
       await _auth.signOut();
