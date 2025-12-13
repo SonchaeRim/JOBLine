@@ -79,7 +79,7 @@ class _SettingScreenState extends State<SettingScreen> {
         // 닉네임 및 ID 처리
         final nickname = (data['nickname'] ?? '닉네임 없음').toString();
 
-        // ✅ (중요) 너 문서에 loginId가 있으니까 name 말고 loginId로 읽는 게 맞음
+        // name 말고 loginId로
         final userId = (data['loginId'] ?? 'ID 없음').toString();
 
         final imageUrl = data['profileImageUrl'] as String?;
@@ -91,7 +91,7 @@ class _SettingScreenState extends State<SettingScreen> {
                 .toList() ??
                 [];
 
-        // ✅ (추가) mainCommunityId 읽어서 커뮤니티 이름 조회
+        // mainCommunityId 읽어서 커뮤니티 이름 조회
         final mainId = (data['mainCommunityId'] ?? '').toString();
         final communityName = await _loadCommunityName(mainId);
 
@@ -101,7 +101,7 @@ class _SettingScreenState extends State<SettingScreen> {
           _displayId = userId;
           _certifications = loadedCertifications;
           _profileImageUrl = imageUrl;
-          _currentCommunity = communityName; // ✅ 여기서 반영!
+          _currentCommunity = communityName;
           _isLoading = false;
         });
       } else {
@@ -287,7 +287,7 @@ class _SettingScreenState extends State<SettingScreen> {
               ),
               const SizedBox(height: 4),
 
-              // ✅ 여기! 고정값 아니고 DB 메인 커뮤니티 이름이 뜸
+              // 고정값 아니고 DB 메인 커뮤니티 이름이 뜸
               Text(
                 _currentCommunity,
                 style: const TextStyle(fontSize: 14, color: Colors.black54),
@@ -500,7 +500,7 @@ class _SettingScreenState extends State<SettingScreen> {
               onTap: () async {
                 // 변경 화면 갔다가 돌아오면 다시 로드해서 반영되게
                 await Navigator.pushNamed(context, RouteNames.communityChange);
-                await _loadUserProfile(); // ✅ 돌아오면 즉시 갱신
+                await _loadUserProfile(); // 돌아오면 즉시 갱신
               },
             ),
             const Divider(color: Colors.black12, height: 1),
