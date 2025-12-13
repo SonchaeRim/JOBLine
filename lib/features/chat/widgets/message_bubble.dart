@@ -22,6 +22,7 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    /// ✅ 시스템 메시지
     if (message.type == 'system') {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -46,17 +47,52 @@ class MessageBubble extends StatelessWidget {
       bottomRight: fromMe ? const Radius.circular(6) : const Radius.circular(16),
     );
 
-    final bubble = Container(
-      constraints: const BoxConstraints(maxWidth: 260),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: bubbleColor,
-        borderRadius: radius,
-      ),
-      child: Text(
+    /// ===============================
+    /// ✅ 메시지 콘텐츠 (텍스트 / 이미지)
+    /// ===============================
+    final Widget content;
+
+    final imageUrl = message.imageUrl ?? '';
+    if (message.type == 'image' && imageUrl.isNotEmpty) {
+      content = ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
+          width: 180,
+          height: 180,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => const SizedBox(
+            width: 180,
+            height: 180,
+            child: Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          errorWidget: (context, url, error) =>
+          const Text('이미지를 불러올 수 없어요'),
+        ),
+      );
+    } else {
+      // 기본 텍스트 메시지
+      content = Text(
         message.text,
         style: TextStyle(color: textColor, height: 1.3),
+      );
+    }
+
+    /// ===============================
+    /// ✅ 말풍선
+    /// ===============================
+    final bubble = Container(
+      constraints: const BoxConstraints(maxWidth: 260),
+      padding: message.type == 'image'
+          ? const EdgeInsets.all(6)
+          : const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: message.type == 'image' ? Colors.transparent : bubbleColor,
+        borderRadius: radius,
       ),
+      child: content,
     );
 
     final time = Text(
@@ -64,14 +100,16 @@ class MessageBubble extends StatelessWidget {
       style: const TextStyle(fontSize: 11, color: Colors.black45),
     );
 
-    // ✅ 상대 메시지
+    /// ===============================
+    /// ✅ 상대 메시지
+    /// ===============================
     if (!fromMe) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 프로필 자리 (연속 메시지 정렬 유지용)
+            // 프로필 영역
             SizedBox(
               width: 40,
               child: showSenderInfo
@@ -95,7 +133,10 @@ class MessageBubble extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
                       senderName,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 Row(
@@ -103,7 +144,7 @@ class MessageBubble extends StatelessWidget {
                   children: [
                     bubble,
                     const SizedBox(width: 6),
-                    time, // ⭕ 말풍선 옆
+                    time,
                   ],
                 ),
               ],
@@ -113,7 +154,9 @@ class MessageBubble extends StatelessWidget {
       );
     }
 
-    // ✅ 내 메시지
+    /// ===============================
+    /// ✅ 내 메시지
+    /// ===============================
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -123,7 +166,7 @@ class MessageBubble extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              time, // ⭕ 말풍선 옆
+              time,
               const SizedBox(width: 6),
               bubble,
             ],

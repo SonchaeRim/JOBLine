@@ -210,6 +210,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
                   child: TextField(
                     controller: _searchController,
                     onSubmitted: (_) => _search(),
+                    textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
                       hintText: '닉네임, 아이디',
                       prefixIcon: const Icon(Icons.search),

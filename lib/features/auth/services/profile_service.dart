@@ -1,4 +1,3 @@
-// 프로필 이미지 업로드, 문서 저장
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -19,7 +18,7 @@ class ProfileService {
   // 프로필 이미지 업로드 후 Firestore에 URL 저장
   Future<String> uploadProfileImage(File imageFile) async {
     try {
-      final ref = _storage.ref().child('user_profiles/$uid');
+      final ref = _storage.ref().child('user_profiles/$uid/profile.jpg');
       // Firebase Storage 업로드
       await ref.putFile(imageFile);
 
@@ -30,6 +29,19 @@ class ProfileService {
       await _db.collection('users').doc(uid).update({
         'profileImageUrl': downloadUrl,
       });
+
+      // 내가 속한 채팅방들의 memberPhotoUrls도 함께 갱신
+      final rooms = await _db
+          .collection('chat_rooms')
+          .where('memberIds', arrayContains: uid)
+          .get();
+
+      for (final doc in rooms.docs) {
+        await doc.reference.update({
+          'memberPhotoUrls.$uid': downloadUrl,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
 
       return downloadUrl;
     } catch (e) {

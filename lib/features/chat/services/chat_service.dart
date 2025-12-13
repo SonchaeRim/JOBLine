@@ -14,7 +14,19 @@ class ChatService {
 
   String get uid => _auth.currentUser!.uid;
 
-  /// ✅ 내 채팅방 목록(실시간)
+  /* ------------------------------------------------------------------------
+   *  공통: 내 커뮤니티 ID
+   * --------------------------------------------------------------------- */
+  Future<String?> _myCommunityId() async {
+    final doc = await _db.collection('users').doc(uid).get();
+    final v = doc.data()?['mainCommunityId'];
+    if (v is String && v.trim().isNotEmpty) return v.trim();
+    return null;
+  }
+
+  /* ------------------------------------------------------------------------
+   *  내 채팅방 목록
+   * --------------------------------------------------------------------- */
   Stream<List<ChatRoom>> watchMyRooms() {
     return _db
         .collection('chat_rooms')
@@ -24,7 +36,9 @@ class ChatService {
         .map((s) => s.docs.map((d) => ChatRoom.fromDoc(d)).toList());
   }
 
-  /// 방 메시지(실시간) - 위->아래 쌓이기(asc)
+  /* ------------------------------------------------------------------------
+   *  방 메시지
+   * --------------------------------------------------------------------- */
   Stream<List<ChatMessage>> watchMessages(String roomId) {
     return _db
         .collection('chat_rooms')
@@ -36,20 +50,37 @@ class ChatService {
         .map((s) => s.docs.map((d) => ChatMessage.fromDoc(d)).toList());
   }
 
-  /// ✅ 방 정보
+  /* ------------------------------------------------------------------------
+   *  방 정보
+   * --------------------------------------------------------------------- */
   Stream<ChatRoom> watchRoom(String roomId) {
-    return _db.collection('chat_rooms').doc(roomId).snapshots().map((d) => ChatRoom.fromDoc(d));
+    return _db
+        .collection('chat_rooms')
+        .doc(roomId)
+        .snapshots()
+        .map((d) => ChatRoom.fromDoc(d));
   }
 
-  /// ✅ 닉네임/아이디 검색(정확히 일치)
+  /* ------------------------------------------------------------------------
+   *  🔍 유저 검색 (같은 커뮤니티만)
+   * --------------------------------------------------------------------- */
   Future<List<Map<String, dynamic>>> searchUsers(String query) async {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return [];
 
+    final myCommunityId = await _myCommunityId();
+    if (myCommunityId == null) return [];
+
     final results = <Map<String, dynamic>>[];
     final seen = <String>{};
 
-    final byNick = await _db.collection('users').where('nicknameLower', isEqualTo: q).limit(30).get();
+    final byNick = await _db
+        .collection('users')
+        .where('mainCommunityId', isEqualTo: myCommunityId)
+        .where('nicknameLower', isEqualTo: q)
+        .limit(30)
+        .get();
+
     for (final d in byNick.docs) {
       if (d.id == uid) continue;
       if (seen.add(d.id)) {
@@ -59,7 +90,13 @@ class ChatService {
       }
     }
 
-    final byIdLower = await _db.collection('users').where('loginId', isEqualTo: q).limit(30).get();
+    final byIdLower = await _db
+        .collection('users')
+        .where('mainCommunityId', isEqualTo: myCommunityId)
+        .where('loginId', isEqualTo: q)
+        .limit(30)
+        .get();
+
     for (final d in byIdLower.docs) {
       if (d.id == uid) continue;
       if (seen.add(d.id)) {
@@ -69,8 +106,13 @@ class ChatService {
       }
     }
 
-    final byIdRaw =
-    await _db.collection('users').where('loginId', isEqualTo: query.trim()).limit(30).get();
+    final byIdRaw = await _db
+        .collection('users')
+        .where('mainCommunityId', isEqualTo: myCommunityId)
+        .where('loginId', isEqualTo: query.trim())
+        .limit(30)
+        .get();
+
     for (final d in byIdRaw.docs) {
       if (d.id == uid) continue;
       if (seen.add(d.id)) {
@@ -83,6 +125,9 @@ class ChatService {
     return results;
   }
 
+  /* ------------------------------------------------------------------------
+   *  유저 기본 정보
+   * --------------------------------------------------------------------- */
   Future<Map<String, String>> _getUserNickTagPhoto(String userUid) async {
     final doc = await _db.collection('users').doc(userUid).get();
     final data = doc.data() ?? {};
@@ -94,7 +139,22 @@ class ChatService {
     return {'nickname': nick, 'tag': tag, 'photoUrl': photoUrl};
   }
 
+  /* ------------------------------------------------------------------------
+   *  💬 DM 생성 (같은 커뮤니티만)
+   * --------------------------------------------------------------------- */
   Future<String> createOrGetDmRoom({required String otherUid}) async {
+    final myDoc = await _db.collection('users').doc(uid).get();
+    final otherDoc = await _db.collection('users').doc(otherUid).get();
+
+    final myCommunity = myDoc.data()?['mainCommunityId'];
+    final otherCommunity = otherDoc.data()?['mainCommunityId'];
+
+    if (myCommunity == null ||
+        otherCommunity == null ||
+        myCommunity != otherCommunity) {
+      throw Exception('같은 커뮤니티 사용자만 채팅할 수 있습니다.');
+    }
+
     final pair = [uid, otherUid]..sort();
     final pairKey = '${pair[0]}_${pair[1]}';
 
@@ -116,6 +176,7 @@ class ChatService {
     await docRef.set({
       'type': 'dm',
       'pairKey': pairKey,
+      'communityId': myCommunity,
       'title': '',
       'memberIds': [uid, otherUid],
       'memberNicknames': {uid: me['nickname'], otherUid: other['nickname']},
@@ -128,17 +189,37 @@ class ChatService {
       'createdBy': uid,
     });
 
-    await _db.collection('chat_rooms').doc(roomId).collection('messages').add(
-      ChatMessage.systemMap(roomId: roomId, text: '${me['nickname']}님이 채팅을 시작했어요.'),
+    await docRef.collection('messages').add(
+      ChatMessage.systemMap(
+        roomId: roomId,
+        text: '${me['nickname']}님이 채팅을 시작했어요.',
+      ),
     );
 
     return roomId;
   }
 
+  /* ------------------------------------------------------------------------
+   *  👥 그룹 채팅 생성 (같은 커뮤니티만)
+   * --------------------------------------------------------------------- */
   Future<String> createGroupRoom({
     required List<String> memberUids,
     String? title,
   }) async {
+    final myDoc = await _db.collection('users').doc(uid).get();
+    final myCommunity = myDoc.data()?['mainCommunityId'];
+
+    for (final u in memberUids) {
+      final otherDoc = await _db.collection('users').doc(u).get();
+      final otherCommunity = otherDoc.data()?['mainCommunityId'];
+
+      if (myCommunity == null ||
+          otherCommunity == null ||
+          myCommunity != otherCommunity) {
+        throw Exception('같은 커뮤니티 사용자만 그룹 채팅이 가능합니다.');
+      }
+    }
+
     final uniq = {...memberUids}.toList();
     if (!uniq.contains(uid)) uniq.add(uid);
 
@@ -162,6 +243,7 @@ class ChatService {
 
     await docRef.set({
       'type': 'group',
+      'communityId': myCommunity,
       'title': title?.trim() ?? '',
       'memberIds': uniq,
       'memberNicknames': nickMap,
@@ -175,13 +257,19 @@ class ChatService {
     });
 
     final meNick = nickMap[uid] ?? 'User';
-    await _db.collection('chat_rooms').doc(roomId).collection('messages').add(
-      ChatMessage.systemMap(roomId: roomId, text: '$meNick님이 채팅을 만들었어요.'),
+    await docRef.collection('messages').add(
+      ChatMessage.systemMap(
+        roomId: roomId,
+        text: '$meNick님이 채팅을 만들었어요.',
+      ),
     );
 
     return roomId;
   }
 
+  /* ------------------------------------------------------------------------
+   *  메시지 전송
+   * --------------------------------------------------------------------- */
   Future<void> sendText({required String roomId, required String text}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
@@ -206,67 +294,40 @@ class ChatService {
     });
   }
 
-  /// ✅ 이미지 전송 (PostEditor 방식 참고해서 안정화)
+  /* ------------------------------------------------------------------------
+   *  이미지 전송
+   * --------------------------------------------------------------------- */
   Future<void> sendImage({required String roomId, required File file}) async {
+    final filename = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final ref = _storage.ref().child('chat_images/$roomId/$uid/$filename');
+
+    await ref.putFile(file);
+    final url = await ref.getDownloadURL();
+
     final roomRef = _db.collection('chat_rooms').doc(roomId);
     final msgRef = roomRef.collection('messages').doc();
 
-    // 확장자 안전 처리
-    String ext = 'jpg';
-    final name = file.path.split('/').last;
-    if (name.contains('.')) {
-      final e = name.split('.').last.toLowerCase();
-      if (e.isNotEmpty) ext = e;
-    }
-
-    // contentType 대충 맞춰주기
-    String contentType = 'image/$ext';
-    if (ext == 'jpg') contentType = 'image/jpeg';
-    if (ext == 'jpeg') contentType = 'image/jpeg';
-    if (ext == 'png') contentType = 'image/png';
-    if (ext == 'webp') contentType = 'image/webp';
-    if (ext == 'heic' || ext == 'heif') contentType = 'image/heic';
-
-    final filename = '${DateTime.now().millisecondsSinceEpoch}.$ext';
-
-    // ✅ PostEditor랑 동일하게 uid까지 포함하면 관리/권한/디버깅이 쉬움
-    final storageRef = _storage.ref().child('chat_images/$roomId/$uid/$filename');
-
-    try {
-      // 업로드
-      await storageRef.putFile(
-        file,
-        SettableMetadata(contentType: contentType),
-      );
-
-      // URL
-      final url = await storageRef.getDownloadURL();
-
-      // Firestore 저장 (메시지 + 채팅방 lastMessage 동시 업데이트)
-      await _db.runTransaction((tx) async {
-        tx.set(msgRef, {
-          'roomId': roomId,
-          'senderId': uid,
-          'type': 'image',
-          'text': '',
-          'imageUrl': url,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-
-        tx.update(roomRef, {
-          'lastMessage': '📷 사진',
-          'lastMessageAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+    await _db.runTransaction((tx) async {
+      tx.set(msgRef, {
+        'roomId': roomId,
+        'senderId': uid,
+        'type': 'image',
+        'text': '',
+        'imageUrl': url,
+        'createdAt': FieldValue.serverTimestamp(),
       });
-    } on FirebaseException catch (e) {
-      // 여기서 caught 되면 거의 대부분 "권한" 또는 "경로" 문제
-      throw Exception('이미지 업로드 실패: ${e.code}');
-    } catch (e) {
-      throw Exception('이미지 전송 실패: $e');
-    }
+
+      tx.update(roomRef, {
+        'lastMessage': '📷 사진',
+        'lastMessageAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
   }
 
+  /* ------------------------------------------------------------------------
+   *  채팅방 나가기
+   * --------------------------------------------------------------------- */
   Future<void> leaveRoom(String roomId) async {
     final roomRef = _db.collection('chat_rooms').doc(roomId);
     await roomRef.update({

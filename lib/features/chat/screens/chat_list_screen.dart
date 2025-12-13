@@ -60,7 +60,7 @@ class ChatListScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('채팅'),
+        title: const Text('채팅 목록'),
         actions: [
           IconButton(
             tooltip: '채팅방 만들기',

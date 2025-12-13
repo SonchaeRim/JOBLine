@@ -203,11 +203,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               ],
             ),
             actions: [
-              IconButton(
-                tooltip: '알림',
-                icon: const Icon(Icons.notifications_none),
-                onPressed: () {},
-              ),
+              // IconButton(
+              //   tooltip: '알림',
+              //   icon: const Icon(Icons.notifications_none),
+              //   onPressed: () {},
+              // ),
               IconButton(
                 tooltip: '채팅방 나가기',
                 icon: const Icon(Icons.exit_to_app),
