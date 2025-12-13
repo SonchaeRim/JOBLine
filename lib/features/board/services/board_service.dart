@@ -16,17 +16,18 @@ class BoardService {
         String? communityId,
         int limit = 20,
       }) async {
-    Query<Map<String, dynamic>> q = _posts
-        .where('boardId', isEqualTo: boardId)
-        .orderBy('createdAt', descending: true);
+    Query<Map<String, dynamic>> q = _posts.where('boardId', isEqualTo: boardId);
 
     if (communityId != null && communityId.isNotEmpty) {
       q = q.where('communityId', isEqualTo: communityId);
     }
 
+    q = q.orderBy('createdAt', descending: true);
+
     final snap = await q.limit(limit).get();
     return snap.docs.map((d) => Post.fromMap(d.id, d.data())).toList();
   }
+
 
   /// [상세 조회]
   Future<Post?> getPostById(String postId) async {

@@ -17,7 +17,6 @@ class PostEditorScreen extends StatefulWidget {
 }
 
 class _PostEditorScreenState extends State<PostEditorScreen> {
-  // 제목/내용 입력창 컨트롤러
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
 
@@ -26,6 +25,25 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     _titleController.dispose();
     _contentController.dispose();
     super.dispose();
+  }
+
+  // ✅ 현재 로그인 유저의 mainCommunityId 가져오기
+  Future<String?> _getMyMainCommunityId(String uid) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    if (!doc.exists || doc.data() == null) return null;
+
+    final data = doc.data() as Map<String, dynamic>;
+    final v = data['mainCommunityId'];
+
+    if (v == null) return null;
+    final id = v.toString();
+    if (id.isEmpty) return null;
+
+    return id;
   }
 
   // 글 저장
@@ -40,21 +58,61 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       return;
     }
 
-    // 현재 로그인한 유저 (없으면 null)
     final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인이 필요합니다.')),
+      );
+      return;
+    }
+
+    // ✅ users/{uid} 한 번만 읽어서 communityId + authorName 같이 얻기
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    if (!userDoc.exists || userDoc.data() == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('유저 정보가 없습니다.')),
+      );
+      return;
+    }
+
+    final u = userDoc.data() as Map<String, dynamic>;
+
+    final communityId = (u['mainCommunityId'] ?? '').toString().trim();
+    if (communityId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('메인 커뮤니티가 설정되지 않았습니다.')),
+      );
+      return;
+    }
+
+    // ✅ 닉네임 우선 → 없으면 name → 없으면 익명
+    String authorName = '익명';
+    final nick = u['nickname'];
+    final name = u['name'];
+    final v = (nick ?? name);
+    if (v != null && v.toString().trim().isNotEmpty) {
+      authorName = v.toString().trim();
+    }
 
     await FirebaseFirestore.instance.collection('posts').add({
+      'communityId': communityId,
       'boardId': widget.boardId,
       'title': title,
       'content': content,
+
+      // ㅅ필드 3종 세트
       'createdAt': FieldValue.serverTimestamp(),
-      'authorId': user?.uid,                    // 권한 체크용
-      'authorName': user?.displayName ?? '익명', // 나중에 닉네임/프로필 연동
+      'authorId': user.uid,
+      'authorName': authorName,
     });
 
-    // true를 리턴 값처럼 넘기고 이전 화면으로 돌아감
     Navigator.pop(context, true);
   }
+
 
   @override
   Widget build(BuildContext context) {

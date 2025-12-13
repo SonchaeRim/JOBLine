@@ -121,6 +121,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           final data = snapshot.data!.data()!;
           final title = data['title'] ?? '';
           final content = data['content'] ?? '';
+          final authorName = (data['authorName'] ?? '익명').toString();
+
+          final ts = data['createdAt'] as Timestamp?;
+          String timeText = '';
+          if (ts != null) {
+            final dt = ts.toDate();
+            timeText =
+            '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
+                '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+          }
+
+
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -135,16 +147,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       child: Icon(Icons.person),
                     ),
                     const SizedBox(width: 12),
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '작성자 이름',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          authorName,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          '작성 시간은 나중에',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                          timeText.isEmpty ? '작성 시간 불러오는 중...' : timeText,
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],
                     ),
