@@ -7,7 +7,7 @@ class PostListScreen extends StatefulWidget {
   final String boardId;
   final String title;
 
-  // ✅ 여기 핵심: 현재 커뮤니티 id를 밖에서 주입받음
+
   final String? communityId;
 
   const PostListScreen({
@@ -24,7 +24,7 @@ class PostListScreen extends StatefulWidget {
 class _PostListScreenState extends State<PostListScreen> {
   final _svc = BoardService();
 
-  // ✅ Future를 상태로 들고 있으면 setState로 쉽게 새로고침 가능
+  // Future를 상태로 들고 있으면 setState로 쉽게 새로고침 가능
   late Future<List<Post>> _future;
 
   @override
@@ -37,7 +37,7 @@ class _PostListScreenState extends State<PostListScreen> {
     );
   }
 
-  // ✅ 커뮤니티가 바뀌거나 boardId가 바뀌면 다시 로드
+  // 커뮤니티가 바뀌거나 boardId가 바뀌면 다시 로드
   @override
   void didUpdateWidget(covariant PostListScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -100,6 +100,7 @@ class _PostListScreenState extends State<PostListScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                trailing: Text('댓글 ${p.commentCount}개'),
                 onTap: () {
                   Navigator.pushNamed(
                     context,
@@ -123,7 +124,7 @@ class _PostListScreenState extends State<PostListScreen> {
             },
           );
 
-          // ✅ 글 작성 후 true로 pop하면 목록 새로고침
+          // 글 작성 후 true로 pop하면 목록 새로고침
           if (changed == true) {
             _reload();
           }
