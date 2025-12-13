@@ -160,19 +160,51 @@ class _CertificationDetailScreenState extends State<CertificationDetailScreen> {
   }
 
   Future<void> _rejectCertification(BuildContext context, Certification cert) async {
-    // 거부 확인 다이얼로그
-    final confirm = await showDialog<bool>(
+    // 거부 사유 입력 컨트롤러
+    final reasonController = TextEditingController();
+
+    // 거부 확인 다이얼로그 (사유 입력 포함)
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('인증 거부'),
-        content: const Text('이 인증을 거부하시겠습니까?\n거부 시 경험치가 지급되지 않습니다.'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('이 인증을 거부하시겠습니까?\n거부 시 경험치가 지급되지 않습니다.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: '반려 사유',
+                hintText: '거부 사유를 입력해주세요',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+              maxLength: 200,
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(context, null),
             child: const Text('취소'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () {
+              final reason = reasonController.text.trim();
+              if (reason.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('반려 사유를 입력해주세요.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+              Navigator.pop(context, {'rejected': true, 'reason': reason});
+            },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('거부'),
           ),
@@ -180,10 +212,11 @@ class _CertificationDetailScreenState extends State<CertificationDetailScreen> {
       ),
     );
 
-    if (confirm != true) return;
+    if (result == null || result['rejected'] != true) return;
 
     try {
-      await _proofService.rejectCertification(cert.id);
+      final reason = result['reason'] as String? ?? '';
+      await _proofService.rejectCertification(cert.id, rejectionReason: reason);
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

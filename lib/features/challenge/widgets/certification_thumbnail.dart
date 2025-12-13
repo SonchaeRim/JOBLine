@@ -16,7 +16,7 @@ class CertificationThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (imageUrl != null) {
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: SizedBox(
@@ -26,6 +26,13 @@ class CertificationThumbnail extends StatelessWidget {
             child: Image.network(
               imageUrl!,
               fit: BoxFit.cover,
+              cacheWidth: (size * MediaQuery.of(context).devicePixelRatio).round(),
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) {
+                  return child;
+                }
+                return _buildPlaceholder();
+              },
               errorBuilder: (context, error, stackTrace) {
                 return _buildPlaceholder();
               },

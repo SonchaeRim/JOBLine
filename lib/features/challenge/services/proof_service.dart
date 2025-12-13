@@ -189,7 +189,8 @@ class ProofService {
   }
 
   /// 인증 거부 처리 (관리자가 거부할 때)
-  Future<void> rejectCertification(String certificationId) async {
+  /// [rejectionReason] 반려 사유
+  Future<void> rejectCertification(String certificationId, {String? rejectionReason}) async {
     try {
       final certDoc = await _firestore.collection(_collection).doc(certificationId).get();
       if (!certDoc.exists) {
@@ -214,11 +215,17 @@ class ProofService {
       }
 
       // 거부 상태 업데이트
-      await _firestore.collection(_collection).doc(certificationId).update({
+      final updateData = {
         'isApproved': false,
         'reviewStatus': ReviewStatus.rejected.name,
         'xpEarned': 0,
-      });
+      };
+      
+      if (rejectionReason != null && rejectionReason.isNotEmpty) {
+        updateData['rejectionReason'] = rejectionReason;
+      }
+      
+      await _firestore.collection(_collection).doc(certificationId).update(updateData);
     } catch (e) {
       throw Exception('인증 거부 실패: $e');
     }
@@ -242,13 +249,13 @@ class ProofService {
   }
 
   /// 검토할 항목이 있는 유저 목록 가져오기 (관리자용)
-  /// 각 유저별로 pending 또는 rejected 상태의 인증 개수를 포함
+  /// 각 유저별로 pending 상태의 인증 개수를 포함
   Future<List<Map<String, dynamic>>> getUsersWithPendingCertifications() async {
     try {
-      // 검토 중이거나 거부된 인증들을 모두 가져오기
+      // 검토 중인 인증들만 가져오기
       final pendingSnapshot = await _firestore
           .collection(_collection)
-          .where('reviewStatus', whereIn: ['pending', 'rejected'])
+          .where('reviewStatus', isEqualTo: 'pending')
           .get();
 
       // 유저별로 그룹화하여 개수 계산

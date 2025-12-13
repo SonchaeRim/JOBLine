@@ -14,7 +14,7 @@ enum CertificationType {
 enum ReviewStatus {
   pending, // 검토 중
   approved, // 인증 완료
-  rejected, // 인증 실패
+  rejected, // 반려
 }
 
 /// 인증 결과 데이터 모델 (certification)
@@ -29,6 +29,7 @@ class Certification {
   final bool isApproved; // 승인 여부 (관리자 승인 또는 자동 승인) - 하위 호환성 유지
   final ReviewStatus reviewStatus; // 검토 상태
   final int xpEarned; // 이 인증으로 획득한 XP
+  final String? rejectionReason; // 반려 사유 (거부된 경우에만)
   
   // 인증 유형 및 상세 정보 (XP 계산에 사용)
   final CertificationType? certificationType; // 인증 유형
@@ -45,6 +46,7 @@ class Certification {
     this.isApproved = true, // 기본값은 자동 승인 - 하위 호환성 유지
     this.reviewStatus = ReviewStatus.pending, // 기본값은 검토 중
     this.xpEarned = 0,
+    this.rejectionReason,
     this.certificationType,
     this.certificationDetails,
   });
@@ -84,6 +86,7 @@ class Certification {
       isApproved: data['isApproved'] as bool? ?? true,
       reviewStatus: reviewStatus,
       xpEarned: data['xpEarned'] as int? ?? 0,
+      rejectionReason: data['rejectionReason'] as String?,
       certificationType: type,
       certificationDetails: data['certificationDetails'] as Map<String, dynamic>?,
     );
@@ -101,6 +104,7 @@ class Certification {
       'isApproved': isApproved,
       'reviewStatus': reviewStatus.name,
       'xpEarned': xpEarned,
+      'rejectionReason': rejectionReason,
       'certificationType': certificationType?.name,
       'certificationDetails': certificationDetails,
     };

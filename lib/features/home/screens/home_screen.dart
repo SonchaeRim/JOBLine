@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../routes/route_names.dart';
 import '../widgets/xp_badge.dart';
-import '../../../core/theme/app_colors.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../widgets/admin_button.dart';
+import '../widgets/board_section.dart';
+import '../widgets/calendar_section.dart';
 import '../../challenge/utils/admin_utils.dart';
 
 /// 홈 탭 화면
@@ -47,10 +49,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 상단 헤더: 로고 + 커뮤니티 + 관리자 버튼
-          _buildHeader(context),
-
-          const SizedBox(height: 24),
+          // 관리자 버튼 (관리자인 경우에만 표시)
+          if (_isAdmin && !_isCheckingAdmin) ...[
+            const AdminButton(),
+            const SizedBox(height: 24),
+          ],
 
           // XP Badge 섹션
           Padding(
@@ -62,59 +65,20 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           ),
-        ],
-      ),
-    );
-  }
 
-  /// 상단 헤더 (로고 + 커뮤니티 정보 + 관리자 버튼)
-  Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // 왼쪽: JL 로고
-              const Text(
-                'JL',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              // 오른쪽: 커뮤니티 정보 (더미 데이터)
-              Text(
-                'IT개발 • 데이터',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+          const SizedBox(height: 16),
+
+          // 게시판 섹션
+          const BoardSection(),
+
+          const SizedBox(height: 16),
+
+          // 캘린더 섹션
+          CalendarSection(
+            userId: userId,
+            onTabChanged: widget.onTabChanged,
           ),
-          // 관리자 버튼 (관리자인 경우에만 표시)
-          if (_isAdmin) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pushNamed(context, RouteNames.adminUserList);
-                },
-                icon: const Icon(Icons.admin_panel_settings),
-                label: const Text('인증 관리'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-          ],
+          const SizedBox(height: 16),
         ],
       ),
     );

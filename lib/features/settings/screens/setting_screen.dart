@@ -5,6 +5,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jobline/features/auth/services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../auth/services/profile_service.dart';
+import '../../xp/services/xp_service.dart';
+import '../../xp/models/rank.dart';
+import '../widgets/certification_section.dart';
 import 'dart:io'; // File 사용
 
 class SettingScreen extends StatefulWidget {
@@ -17,6 +20,7 @@ class SettingScreen extends StatefulWidget {
 class _SettingScreenState extends State<SettingScreen> {
   final AuthService _authService = AuthService();
   final ProfileService _profileService = ProfileService();
+  final XpService _xpService = XpService();
 
   bool _isLoading = true;
   String _displayName = '사용자 이름';
@@ -27,7 +31,7 @@ class _SettingScreenState extends State<SettingScreen> {
 
   String _currentCommunity = '미설정';
 
-  final String _currentRank = 'SILVER';
+  String _currentRank = 'NEWBIE';
 
   @override
   void initState() {
@@ -94,6 +98,17 @@ class _SettingScreenState extends State<SettingScreen> {
         final mainId = (data['mainCommunityId'] ?? '').toString();
         final communityName = await _loadCommunityName(mainId);
 
+        // 랭크 정보 가져오기
+        String rank = 'NEWBIE';
+        try {
+          final xpData = await _xpService.getUserXp(user.uid);
+          rank = xpData['rank'] as String? ?? 'NEWBIE';
+        } catch (e) {
+          // rank 필드가 없으면 totalXp로 계산
+          final totalXp = (data['totalXp'] as int?) ?? 0;
+          rank = RankUtil.getRank(totalXp).name;
+        }
+
         if (!mounted) return;
         setState(() {
           _displayName = nickname;
@@ -101,16 +116,26 @@ class _SettingScreenState extends State<SettingScreen> {
           _certifications = loadedCertifications;
           _profileImageUrl = imageUrl;
           _currentCommunity = communityName;
+          _currentRank = rank;
           _isLoading = false;
         });
       } else {
         // 문서 없는 경우
         if (!mounted) return;
         final emailId = user.email?.split('@').first ?? '사용자';
+        // 랭크 정보 가져오기 (문서가 없어도 XP 서비스에서 기본값 반환)
+        String rank = 'NEWBIE';
+        try {
+          final xpData = await _xpService.getUserXp(user.uid);
+          rank = xpData['rank'] as String? ?? 'NEWBIE';
+        } catch (e) {
+          rank = 'NEWBIE';
+        }
         setState(() {
           _displayName = emailId;
           _displayId = emailId;
           _currentCommunity = '미설정';
+          _currentRank = rank;
           _isLoading = false;
         });
       }
@@ -215,6 +240,18 @@ class _SettingScreenState extends State<SettingScreen> {
         ? _authService.currentUserId!.substring(_authService.currentUserId!.length - 4)
         : '0000';
 
+    // 랭크 색상 가져오기
+    Rank currentRankEnum;
+    try {
+      currentRankEnum = Rank.values.firstWhere(
+        (r) => r.name == _currentRank,
+        orElse: () => Rank.newbie,
+      );
+    } catch (e) {
+      currentRankEnum = Rank.newbie;
+    }
+    final rankColor = currentRankEnum.color;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -297,11 +334,7 @@ class _SettingScreenState extends State<SettingScreen> {
                 padding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.grey.shade400, Colors.grey.shade300],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
+                  color: rankColor,
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Text(
@@ -321,6 +354,10 @@ class _SettingScreenState extends State<SettingScreen> {
   }
 
   Widget _buildCertificatesSection() {
+    if (_authService.currentUserId != null) {
+      return CertificationSection(userId: _authService.currentUserId!);
+    }
+    
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 20),
       padding: const EdgeInsets.all(20),
@@ -330,44 +367,10 @@ class _SettingScreenState extends State<SettingScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: _certifications.isEmpty
-            ? [
+        children: [
           Text(
-            '보유한 자격증이 없습니다.',
+            '인증된 챌린지가 없습니다.',
             style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-          ),
-        ]
-            : [
-          ..._certifications.map(
-                (cert) => Padding(
-              padding: const EdgeInsets.only(bottom: 6.0),
-              child: Row(
-                children: [
-                  const Text('🏆', style: TextStyle(fontSize: 18)),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      cert,
-                      style: const TextStyle(
-                          fontSize: 15, color: Colors.black87),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Row(
-              children: const [
-                Text('🏅', style: TextStyle(fontSize: 18)),
-                SizedBox(width: 8),
-                Text(
-                  'SW 융합 해커톤 대회 [우수상] 수상',
-                  style: TextStyle(fontSize: 15, color: Colors.black87),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -455,6 +458,7 @@ class _SettingScreenState extends State<SettingScreen> {
             const SizedBox(height: 15),
 
             _buildProfileCard(),
+            const SizedBox(height: 20),
             _buildCertificatesSection(),
 
             _buildSectionHeader('계정'),
