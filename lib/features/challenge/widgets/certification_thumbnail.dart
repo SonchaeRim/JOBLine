@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/certification.dart';
 
 /// 인증 썸네일 위젯
@@ -16,17 +17,23 @@ class CertificationThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (imageUrl != null) {
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: SizedBox(
           width: size,
           child: AspectRatio(
             aspectRatio: 210 / 297, // A4 비율 (가로:세로)
-            child: Image.network(
-              imageUrl!,
+            child: CachedNetworkImage(
+              imageUrl: imageUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
+              memCacheWidth: (size * MediaQuery.of(context).devicePixelRatio).round(),
+              placeholder: (context, url) {
+                debugPrint('Loading image: $url');
+                return _buildPlaceholder();
+              },
+              errorWidget: (context, url, error) {
+                debugPrint('Image load error: $error for URL: $url');
                 return _buildPlaceholder();
               },
             ),
@@ -39,25 +46,21 @@ class CertificationThumbnail extends StatelessWidget {
   }
 
   Widget _buildPlaceholder() {
-    return CircleAvatar(
-      radius: size / 2,
-      backgroundColor: reviewStatus == ReviewStatus.approved
-          ? Colors.green.shade100
-          : reviewStatus == ReviewStatus.rejected
-              ? Colors.red.shade100
-              : Colors.orange.shade100,
-      child: Icon(
-        reviewStatus == ReviewStatus.approved
-            ? Icons.check
-            : reviewStatus == ReviewStatus.rejected
-                ? Icons.close
-                : Icons.pending,
-        color: reviewStatus == ReviewStatus.approved
-            ? Colors.green
-            : reviewStatus == ReviewStatus.rejected
-                ? Colors.red
-                : Colors.orange,
-        size: size * 0.44, // 40 / 90
+    return Container(
+      width: size,
+      height: size * (297 / 210), // A4 비율
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: SizedBox(
+          width: size * 0.4,
+          height: size * 0.4,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+          ),
+        ),
       ),
     );
   }

@@ -36,7 +36,7 @@ class CertificationBasicInfo extends StatelessWidget {
       case ReviewStatus.approved:
         return '인증 완료';
       case ReviewStatus.rejected:
-        return '인증 실패';
+        return '반려';
       case ReviewStatus.pending:
         return '검토 중';
     }
@@ -110,10 +110,40 @@ class CertificationBasicInfo extends StatelessWidget {
                 valueColor: AppColors.primary,
               ),
             ],
+            if (certification.reviewStatus == ReviewStatus.rejected && 
+                certification.rejectionReason != null && 
+                certification.rejectionReason!.isNotEmpty) ...[
+              const Divider(),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 100,
+                    child: Text(
+                      '반려 사유',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      certification.rejectionReason!,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.red,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 }
-

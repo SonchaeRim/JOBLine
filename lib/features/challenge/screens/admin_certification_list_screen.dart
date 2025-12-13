@@ -41,17 +41,17 @@ class AdminCertificationListScreen extends StatelessWidget {
             return const EmptyCertificationList();
           }
 
-          // 검토 중이거나 거부된 항목을 먼저 표시
+          // 검토 중인 항목을 먼저 표시하고, 그 다음 날짜순 정렬
           final sortedCertifications = List<Certification>.from(certifications);
           sortedCertifications.sort((a, b) {
-            // pending, rejected를 먼저, 그 다음 approved
-            if (a.reviewStatus == ReviewStatus.pending ||
-                a.reviewStatus == ReviewStatus.rejected) {
-              if (b.reviewStatus == ReviewStatus.approved) return -1;
+            // pending을 먼저, 그 다음 날짜순
+            if (a.reviewStatus == ReviewStatus.pending &&
+                b.reviewStatus != ReviewStatus.pending) {
+              return -1;
             }
-            if (b.reviewStatus == ReviewStatus.pending ||
-                b.reviewStatus == ReviewStatus.rejected) {
-              if (a.reviewStatus == ReviewStatus.approved) return 1;
+            if (a.reviewStatus != ReviewStatus.pending &&
+                b.reviewStatus == ReviewStatus.pending) {
+              return 1;
             }
             return b.proofDate.compareTo(a.proofDate);
           });

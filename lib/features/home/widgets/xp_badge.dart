@@ -73,13 +73,13 @@ class XpBadge extends StatelessWidget {
                 border: Border.all(color: AppColors.primary, width: 1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(12.0),
               child: Column(
                 children: [
                   // JL 아바타 (등급 색상 적용)
                   Container(
-                    width: 60,
-                    height: 60,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: rankColorLight,
                       shape: BoxShape.circle,
@@ -89,24 +89,24 @@ class XpBadge extends StatelessWidget {
                       child: Text(
                         'JL',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: rankColorDark,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   // 등급 표시
                   Text(
                     currentRank.name,
                     style: const TextStyle(
-                      fontSize: 28,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   // 진행 바
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
@@ -116,10 +116,10 @@ class XpBadge extends StatelessWidget {
                       valueColor: AlwaysStoppedAnimation<Color>(
                         AppColors.primary,
                       ),
-                      minHeight: 8,
+                      minHeight: 5,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   // 다음 등급 및 XP 정보
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -129,7 +129,7 @@ class XpBadge extends StatelessWidget {
                             ? '다음 등급 : ${nextRank.name}'
                             : '최고 등급',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 12,
                           color: AppColors.textSecondary,
                         ),
                       ),
@@ -138,7 +138,7 @@ class XpBadge extends StatelessWidget {
                             ? '$totalXp / ${nextRankXp} Exp'
                             : '$totalXp Exp',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 12,
                           color: AppColors.textSecondary,
                         ),
                       ),
@@ -147,7 +147,7 @@ class XpBadge extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             // 챌린지 등록 버튼
             SizedBox(
               width: double.infinity,
@@ -156,8 +156,8 @@ class XpBadge extends StatelessWidget {
                   Navigator.pushNamed(context, RouteNames.challenge);
                 },
                 icon: Container(
-                  width: 24,
-                  height: 24,
+                  width: 20,
+                  height: 20,
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
@@ -165,20 +165,20 @@ class XpBadge extends StatelessWidget {
                   child: const Icon(
                     Icons.add,
                     color: AppColors.primary,
-                    size: 18,
+                    size: 16,
                   ),
                 ),
                 label: const Text(
                   '챌린지 등록',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
