@@ -19,7 +19,6 @@ class BoardTabsScreen extends StatelessWidget {
   Stream<String?> _mainCommunityIdStream() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      // 로그인 안 된 경우: 빈 스트림
       return const Stream<String?>.empty();
     }
 
@@ -40,21 +39,18 @@ class BoardTabsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = Theme.of(context).colorScheme.surface;
     final primary = Theme.of(context).colorScheme.primary;
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return StreamBuilder<String?>(
       stream: _mainCommunityIdStream(),
       builder: (context, snap) {
-        // 로딩 중(처음 구독 시작)
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
         final communityId = snap.data;
 
-        // mainCommunityId가 없으면 안내
         if (communityId == null) {
           return Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -73,25 +69,35 @@ class BoardTabsScreen extends StatelessWidget {
           );
         }
 
-        // communityId가 있으면 기존 UI + 누를 때 communityId 같이 넘김
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
+              const Center(
+                child: Text(
+                  'JL',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
               const Text(
                 '게시판 목록',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 10),
 
-              //  현재 커뮤니티 표시: 배지 + 값 강조
+              // 현재 커뮤니티 표시
               Row(
                 children: [
                   Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: primary.withOpacity(0.10),
                       borderRadius: BorderRadius.circular(999),
@@ -129,13 +135,19 @@ class BoardTabsScreen extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
+
+              // 회색 박스 카드들
               Expanded(
                 child: ListView.separated(
                   itemCount: boards.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, __) => const SizedBox(height: 14),
                   itemBuilder: (context, i) {
                     final b = boards[i];
+                    final boardId = b['id'] as String;
+                    final title = b['title'] as String;
+                    final icon = b['icon'] as IconData;
+
                     return InkWell(
                       borderRadius: BorderRadius.circular(12),
                       onTap: () {
@@ -143,32 +155,33 @@ class BoardTabsScreen extends StatelessWidget {
                           context,
                           RouteNames.postList,
                           arguments: {
-                            'boardId': b['id'],
-                            'title': b['title'],
+                            'boardId': boardId,
+                            'title': title,
                             'communityId': communityId,
                           },
                         );
                       },
-                      child: Ink(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 14),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
                         decoration: BoxDecoration(
-                          color: surface,
+                          color: const Color(0xFFF3F4F6),
                           borderRadius: BorderRadius.circular(12),
-                          border:
-                          Border.all(color: Colors.grey.withOpacity(0.35)),
                         ),
                         child: Row(
                           children: [
-                            Icon(b['icon'] as IconData, size: 18),
-                            const SizedBox(width: 8),
+                            Icon(icon, size: 18, color: Colors.redAccent),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                b['title'] as String,
-                                style: const TextStyle(fontSize: 16),
+                                title,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
                               ),
                             ),
-                            const Icon(Icons.chevron_right),
+                            const Icon(Icons.chevron_right, color: Colors.black54),
                           ],
                         ),
                       ),

@@ -68,8 +68,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 16),
 
-          // 게시판 섹션
-          const BoardSection(),
+          // 게시판 섹션,
+          BoardSection(userId: userId),
 
           const SizedBox(height: 16),
 
