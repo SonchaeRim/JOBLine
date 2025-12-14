@@ -49,7 +49,7 @@ class ChatRoom {
       memberIds: List<String>.from(data['memberIds'] as List? ?? const []),
       memberNicknames: Map<String, dynamic>.from(data['memberNicknames'] as Map? ?? const {}),
       memberTags: Map<String, dynamic>.from(data['memberTags'] as Map? ?? const {}),
-      memberPhotoUrls: Map<String, dynamic>.from(data['memberPhotoUrls'] as Map? ?? const {}),
+      memberPhotoUrls: Map<String, String>.from(data['memberPhotoUrls'] as Map? ?? const {}),
       lastMessage: (data['lastMessage'] as String?) ?? '',
       lastMessageAt: _toDate(data['lastMessageAt']),
       createdAt: _toDate(data['createdAt']),

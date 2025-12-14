@@ -133,8 +133,13 @@ class ChatService {
     final data = doc.data() ?? {};
 
     final nick = (data['nickname'] as String?) ?? 'User';
-    final tag = (data['tag'] as String?) ?? '0000';
+    final loginId = (data['loginId'] as String?) ?? '';
     final photoUrl = (data['profileImageUrl'] as String?) ?? '';
+
+    String tag = '0000';
+    if (loginId.isNotEmpty && loginId.length > 4) {
+      tag = loginId.substring(loginId.length - 4);
+    }
 
     return {'nickname': nick, 'tag': tag, 'photoUrl': photoUrl};
   }

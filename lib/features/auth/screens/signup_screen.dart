@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:jobline/features/community/screens/category_select_screen.dart';
 import 'package:jobline/features/auth/services/auth_service.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // ✅ 추가
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -21,7 +21,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController passwordController = TextEditingController();
   final AuthService _authService = AuthService();
 
-  bool _loading = false; // ✅ 추가 (중복 클릭 방지)
+  bool _loading = false; // 추가 (중복 클릭 방지)
 
   bool _isButtonEnabled() {
     return nicknameController.text.isNotEmpty &&
@@ -184,7 +184,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     child: SizedBox(
                       height: 50,
                       child: ElevatedButton(
-                        // ✅ 수정: 로딩 중이면 비활성화
+                        // 로딩 중이면 비활성화
                         onPressed: (_isButtonEnabled() && !_loading)
                             ? () async {
                           if (!_formKey.currentState!.validate()) return;
@@ -199,13 +199,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               nickname: nicknameController.text.trim(),
                             );
 
-                            // ✅ 핵심: 회원가입 직후 인증 상태/토큰 확정 (Storage 403 예방)
+                            // 회원가입 직후 인증 상태/토큰 확정
                             await FirebaseAuth.instance.currentUser?.reload();
                             await FirebaseAuth.instance.currentUser?.getIdToken(true);
 
                             if (!mounted) return;
 
-                            // ✅ 네비게이션(화면 이동): 회원가입 화면을 교체
+                            // 네비게이션(화면 이동): 회원가입 화면을 교체
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
@@ -229,7 +229,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           }
                         }
                             : null,
-                        // ✅ 로딩 UI (선택이지만 추천)
+                        // 로딩 UI (선택이지만 추천)
                         child: _loading
                             ? const SizedBox(
                           width: 18,

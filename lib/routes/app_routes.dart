@@ -74,7 +74,7 @@ class AppRoutes {
     RouteNames.calendar: (context) => const CalendarScreen(),
 
     // --- 채팅(탭 루트) ---
-    // ✅ ChatListScreen은 const 불가일 수 있으므로 const 제거
+    // ChatListScreen은 const 불가일 수 있으므로 const 제거
     RouteNames.chat: (context) => ChatListScreen(),
 
     // --- 챌린지(탭 루트) ---
