@@ -4,15 +4,20 @@ Android / iOS 지원
 고급 모바일 프로그래밍 팀 프로젝트
 대학생·취준생을 위한 취업 커뮤니티 앱
 
+
 ## ✨ 핵심 기능
 - 커뮤니티 배정/변경 기반 맞춤형 게시판
 - 게시글/댓글/좋아요
 - 일정 관리 및 마감 알림(FCM)
 - 1:1 채팅, 챌린지/XP(참여 유도)
 
+  
+
 ## 🧱 아키텍처 요약
 - Feature-first 구조(features/도메인별) + models/screens/services/widgets 계층 분리
 - Firebase(Auth/Firestore/Storage/FCM) 기반 데이터·실시간 기능 구현
+
+
 
 ---
 
@@ -56,6 +61,7 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 | `lib/routes/`   | 라우팅(화면 이동) 정의                 |
 | `lib/features/` | 주요 기능(도메인)별 모듈                |
 
+
 | Module                | Subfolders                                     | 설명                |
 | --------------------- | ---------------------------------------------- | ----------------- |
 | `features/auth/`      | `models/`, `screens/`, `services/`, `widgets/` | 로그인, 회원가입, 프로필    |
@@ -65,6 +71,7 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 | `features/challenge/` | `models/`, `screens/`, `services/`, `widgets/` | 챌린지 및 인증 기능       |
 | `features/community/` | `models/`, `screens/`, `services/`, `widgets/` | 커뮤니티 배정 및 변경      |
 | `features/xp/`        | `models/`, `services/`, `widgets/`             | 경험치 및 레벨 시스템      |
+
 
 | Folder      | 의미                           |
 | ----------- | ---------------------------- |
@@ -76,18 +83,23 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 
 ---
 
+
 ## 📌 구현 상세 ( 파일별 역할 )
 
 <details>
 <summary><b>📂 파일/폴더 상세 설명 펼치기</b></summary>
 
+
 ---
+
 
 ## 🧩 main.dart
 - 앱 진입점 (`runApp()`)
 - 라우팅 및 테마 설정
 
+
 ---
+
 
 ## 📂 config/ 환경 설정 (Firebase, 상수 등)
 
@@ -96,7 +108,9 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 | `firebase_options.dart` | Firebase 초기 설정 자동 생성 파일 (`flutterfire configure`) |
 | `app_config.dart` | 환경 설정 상수 (앱 이름, 버전, Firestore 컬렉션 이름 등) |
 
+
 ---
+
 
 ## 📂 core/ 전역 공통 리소스 (테마, 색상, 유틸, 공용 위젯)
 
@@ -107,7 +121,9 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 | `validators.dart` | 입력값 유효성 검사 (이메일, 비밀번호 등) |
 | `common_button.dart` / `input_field.dart` | 공통 버튼/입력창 위젯 |
 
+
 ---
+
 
 ## 📂 routes/ 라우팅(화면 이동) 정의
 
@@ -116,7 +132,9 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 | `app_routes.dart` | 화면 이동 설정(go_router / Navigator) |
 | `route_names.dart` | 라우트 이름 상수화 (ex: `/login`, `/board/detail`) |
 
+
 ---
+
 
 ## 📂 features/auth/ (로그인·프로필·미디어)
 
@@ -131,7 +149,9 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 | `services/profile_service.dart` | Firestore/Storage 프로필 연동 |
 | `widgets/profile_avatar.dart` | 프로필 이미지 위젯 |
 
+
 ---
+
 
 ## 📂 features/board/ (게시판·댓글)
 
@@ -149,6 +169,7 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 
 ---
 
+
 ## 📂 features/calendar/ (일정·알림)
 
 | 파일명 | 설명 |
@@ -161,7 +182,9 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 | `widgets/calendar_month_view.dart` | 달력 위젯 |
 | `widgets/schedule_card.dart` | 일정 카드 UI |
 
+
 ---
+
 
 ## 📂 features/challenge/ (챌린지·인증)
 
@@ -177,7 +200,9 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 | `widgets/challenge_card.dart` | 챌린지 카드 |
 | `widgets/progress_bar.dart` | 진행바 |
 
+
 ---
+
 
 ## 📂 features/chat/ (1:1 채팅)
 
@@ -192,7 +217,9 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 | `widgets/message_bubble.dart` | 말풍선 UI |
 | `widgets/chat_input_field.dart` | 입력창 |
 
+
 ---
+
 
 ## 📂 features/community/ (커뮤니티 배정/변경)
 
@@ -205,7 +232,9 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 | `services/community_service.dart` | 자동 배정/연동 로직 |
 | `widgets/community_card.dart` | 커뮤니티 카드 |
 
+
 ---
+
 
 ## 📂 features/xp/ (경험치/레벨)
 
@@ -217,6 +246,7 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 | `widgets/level_progress_bar.dart` | 레벨 진행바 |
 
 </details>
+
 
 ---
 
