@@ -7,6 +7,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../models/chat_room.dart';
 import '../models/message.dart';
 
+/// 채팅 관련 Firestore/Storage 처리 서비스
 class ChatService {
   final _db = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
@@ -14,9 +15,7 @@ class ChatService {
 
   String get uid => _auth.currentUser!.uid;
 
-  /* ------------------------------------------------------------------------
-   *  공통: 내 커뮤니티 ID
-   * --------------------------------------------------------------------- */
+  /// 내 mainCommunityId 조회(같은 커뮤니티끼리만 채팅 가능하도록 제한)
   Future<String?> _myCommunityId() async {
     final doc = await _db.collection('users').doc(uid).get();
     final v = doc.data()?['mainCommunityId'];
@@ -24,9 +23,7 @@ class ChatService {
     return null;
   }
 
-  /* ------------------------------------------------------------------------
-   *  내 채팅방 목록
-   * --------------------------------------------------------------------- */
+  /// 내 채팅방 목록 구독 (memberIds에 내 uid 포함된 방)
   Stream<List<ChatRoom>> watchMyRooms() {
     return _db
         .collection('chat_rooms')
@@ -36,9 +33,7 @@ class ChatService {
         .map((s) => s.docs.map((d) => ChatRoom.fromDoc(d)).toList());
   }
 
-  /* ------------------------------------------------------------------------
-   *  방 메시지
-   * --------------------------------------------------------------------- */
+  /// 특정 방 메시지 구독
   Stream<List<ChatMessage>> watchMessages(String roomId) {
     return _db
         .collection('chat_rooms')
@@ -50,9 +45,7 @@ class ChatService {
         .map((s) => s.docs.map((d) => ChatMessage.fromDoc(d)).toList());
   }
 
-  /* ------------------------------------------------------------------------
-   *  방 정보
-   * --------------------------------------------------------------------- */
+  /// 방 정보 구독 (제목/멤버/최신메시지 등)
   Stream<ChatRoom> watchRoom(String roomId) {
     return _db
         .collection('chat_rooms')
@@ -61,9 +54,7 @@ class ChatService {
         .map((d) => ChatRoom.fromDoc(d));
   }
 
-  /* ------------------------------------------------------------------------
-   *  🔍 유저 검색 (같은 커뮤니티만)
-   * --------------------------------------------------------------------- */
+  /// 유저 검색: 같은 커뮤니티 유저만 대상으로
   Future<List<Map<String, dynamic>>> searchUsers(String query) async {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return [];
@@ -74,6 +65,7 @@ class ChatService {
     final results = <Map<String, dynamic>>[];
     final seen = <String>{};
 
+    // 1) nicknameLower 정확히 일치 검색
     final byNick = await _db
         .collection('users')
         .where('mainCommunityId', isEqualTo: myCommunityId)
@@ -90,6 +82,7 @@ class ChatService {
       }
     }
 
+    // 2) loginId 소문자 기준 검색(필요 시 인덱스 주의)
     final byIdLower = await _db
         .collection('users')
         .where('mainCommunityId', isEqualTo: myCommunityId)
@@ -106,6 +99,7 @@ class ChatService {
       }
     }
 
+    // 3) 원본 입력 그대로도 한 번 더 검색
     final byIdRaw = await _db
         .collection('users')
         .where('mainCommunityId', isEqualTo: myCommunityId)
@@ -125,9 +119,7 @@ class ChatService {
     return results;
   }
 
-  /* ------------------------------------------------------------------------
-   *  유저 기본 정보
-   * --------------------------------------------------------------------- */
+  /// 특정 uid의 (닉/태그/프로필이미지) 기본 정보 가져오기
   Future<Map<String, String>> _getUserNickTagPhoto(String userUid) async {
     final doc = await _db.collection('users').doc(userUid).get();
     final data = doc.data() ?? {};
@@ -136,6 +128,7 @@ class ChatService {
     final loginId = (data['loginId'] as String?) ?? '';
     final photoUrl = (data['profileImageUrl'] as String?) ?? '';
 
+    // tag는 loginId 끝 4자리로 생성
     String tag = '0000';
     if (loginId.isNotEmpty && loginId.length > 4) {
       tag = loginId.substring(loginId.length - 4);
@@ -144,9 +137,9 @@ class ChatService {
     return {'nickname': nick, 'tag': tag, 'photoUrl': photoUrl};
   }
 
-  /* ------------------------------------------------------------------------
-   *  💬 DM 생성 (같은 커뮤니티만)
-   * --------------------------------------------------------------------- */
+  /// DM 방 생성(이미 있으면 기존 방 반환)
+  /// - 같은 커뮤니티끼리만 허용
+  /// - pairKey로 중복 방지
   Future<String> createOrGetDmRoom({required String otherUid}) async {
     final myDoc = await _db.collection('users').doc(uid).get();
     final otherDoc = await _db.collection('users').doc(otherUid).get();
@@ -160,6 +153,7 @@ class ChatService {
       throw Exception('같은 커뮤니티 사용자만 채팅할 수 있습니다.');
     }
 
+    // pairKey: uid 2개를 정렬해서 고정 키 생성
     final pair = [uid, otherUid]..sort();
     final pairKey = '${pair[0]}_${pair[1]}';
 
@@ -194,6 +188,7 @@ class ChatService {
       'createdBy': uid,
     });
 
+    // 시스템 메시지(방 생성 안내)
     await docRef.collection('messages').add(
       ChatMessage.systemMap(
         roomId: roomId,
@@ -204,9 +199,9 @@ class ChatService {
     return roomId;
   }
 
-  /* ------------------------------------------------------------------------
-   *  👥 그룹 채팅 생성 (같은 커뮤니티만)
-   * --------------------------------------------------------------------- */
+  /// 그룹 방 생성
+  /// - 같은 커뮤니티끼리만 허용
+  /// - 최소 3명(나 포함)
   Future<String> createGroupRoom({
     required List<String> memberUids,
     String? title,
@@ -214,6 +209,7 @@ class ChatService {
     final myDoc = await _db.collection('users').doc(uid).get();
     final myCommunity = myDoc.data()?['mainCommunityId'];
 
+    // 커뮤니티 일치 검사
     for (final u in memberUids) {
       final otherDoc = await _db.collection('users').doc(u).get();
       final otherCommunity = otherDoc.data()?['mainCommunityId'];
@@ -225,6 +221,7 @@ class ChatService {
       }
     }
 
+    // 중복 제거 + 나 포함 보장
     final uniq = {...memberUids}.toList();
     if (!uniq.contains(uid)) uniq.add(uid);
 
@@ -232,6 +229,7 @@ class ChatService {
       throw Exception('그룹 채팅은 최소 3명(나 포함)이어야 합니다.');
     }
 
+    // 멤버별 표시 정보 map 구성
     final nickMap = <String, String>{};
     final tagMap = <String, String>{};
     final photoMap = <String, String>{};
@@ -272,9 +270,7 @@ class ChatService {
     return roomId;
   }
 
-  /* ------------------------------------------------------------------------
-   *  메시지 전송
-   * --------------------------------------------------------------------- */
+  /// 텍스트 메시지 전송 (트랜잭션으로 메시지+방 최신정보 동시 업데이트)
   Future<void> sendText({required String roomId, required String text}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
@@ -299,9 +295,7 @@ class ChatService {
     });
   }
 
-  /* ------------------------------------------------------------------------
-   *  이미지 전송
-   * --------------------------------------------------------------------- */
+  /// 이미지 업로드(Storage) 후 메시지 전송
   Future<void> sendImage({required String roomId, required File file}) async {
     final filename = '${DateTime.now().millisecondsSinceEpoch}.jpg';
     final ref = _storage.ref().child('chat_images/$roomId/$uid/$filename');
@@ -330,9 +324,7 @@ class ChatService {
     });
   }
 
-  /* ------------------------------------------------------------------------
-   *  채팅방 나가기
-   * --------------------------------------------------------------------- */
+  /// 채팅방 나가기: memberIds에서 제거 + 멤버 map(닉/태그/사진)에서도 삭제
   Future<void> leaveRoom(String roomId) async {
     final roomRef = _db.collection('chat_rooms').doc(roomId);
     await roomRef.update({

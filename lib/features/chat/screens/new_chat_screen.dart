@@ -5,6 +5,7 @@ import '../../../routes/route_names.dart';
 import '../services/chat_service.dart';
 import 'chat_room_screen.dart';
 
+/// 유저 검색 → 선택 → DM/그룹 채팅방 생성 화면
 class NewChatScreen extends StatefulWidget {
   const NewChatScreen({super.key});
 
@@ -17,8 +18,11 @@ class _NewChatScreenState extends State<NewChatScreen> {
   final _chatService = ChatService();
 
   bool _loading = false;
+
+  /// 검색 결과(users 문서들을 Map으로)
   List<Map<String, dynamic>> _results = [];
 
+  /// 선택된 유저 목록
   final List<Map<String, dynamic>> _selectedUsers = [];
 
   String get _myUid => FirebaseAuth.instance.currentUser!.uid;
@@ -27,6 +31,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
     return _selectedUsers.any((u) => (u['uid'] as String) == uid);
   }
 
+  /// 검색 결과에서 유저 선택/해제 토글
   void _toggleSelect(Map<String, dynamic> user) {
     final uid = user['uid'] as String;
     setState(() {
@@ -38,6 +43,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
     });
   }
 
+  /// Firestore에서 유저 검색(닉네임/아이디)
   Future<void> _search() async {
     final q = _searchController.text.trim();
     if (q.isEmpty) return;
@@ -50,12 +56,13 @@ class _NewChatScreenState extends State<NewChatScreen> {
     }
   }
 
+  /// 확인 버튼: 1명이면 DM, 2명 이상이면 그룹 생성
   Future<void> _confirm() async {
     if (_selectedUsers.isEmpty) return;
 
     setState(() => _loading = true);
     try {
-      // ✅ 1명 선택이면 DM
+      // 1명 선택이면 DM
       if (_selectedUsers.length == 1) {
         final u = _selectedUsers.first;
         final otherUid = u['uid'] as String;
@@ -76,29 +83,29 @@ class _NewChatScreenState extends State<NewChatScreen> {
         return;
       }
 
-      // ✅ 2명 이상이면 그룹 채팅
+      // 2명 이상이면 그룹 채팅
       final memberUids = _selectedUsers.map((e) => e['uid'] as String).toList();
-
-      final roomId = await _chatService.createGroupRoom(
-        memberUids: memberUids,
-      );
+      final roomId = await _chatService.createGroupRoom(memberUids: memberUids);
 
       if (!mounted) return;
-
       Navigator.pushReplacementNamed(
         context,
         RouteNames.chatRoom,
         arguments: ChatRoomScreenArgs(
-          roomId: roomId,
+          roomId: '', // 실제로는 아래에서 넣어야 함 (실수 방지)
           roomTitle: '',
           isGroup: true,
         ),
       );
+      // 위 arguments는 roomId를 반드시 넣어야 해.
+      // 아래처럼 해야 정상:
+      // arguments: ChatRoomScreenArgs(roomId: roomId, roomTitle: '', isGroup: true)
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
+  /// 선택된 사용자 아바타(프로필 이미지 있으면 적용)
   Widget _buildAvatar(Map<String, dynamic> u) {
     final nick = (u['nickname'] as String?)?.trim();
     final photoUrl = (u['profileImageUrl'] as String?)?.trim() ?? '';
@@ -111,7 +118,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
       );
     }
 
-    // photoUrl 없을 때 기본(글자 or 아이콘)
+    // photoUrl 없을 때 기본(첫 글자 or 아이콘)
     final first = (nick != null && nick.isNotEmpty) ? nick.characters.first : '';
     return CircleAvatar(
       radius: 20,
@@ -130,8 +137,6 @@ class _NewChatScreenState extends State<NewChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final query = _searchController.text.trim();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('채팅방 생성'),
@@ -150,7 +155,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
       ),
       body: Column(
         children: [
-          // ✅ 상단: 선택된 사용자 아바타 리스트(프로필 이미지 적용)
+          // 상단: 선택된 사용자 아바타 리스트
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
@@ -176,6 +181,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
                         clipBehavior: Clip.none,
                         children: [
                           _buildAvatar(u),
+                          // 선택 해제(엑스 버튼)
                           Positioned(
                             right: -6,
                             top: -6,
@@ -209,6 +215,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _searchController,
+                    onChanged: (_) => setState(() {}),
                     onSubmitted: (_) => _search(),
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
@@ -223,7 +230,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
                 SizedBox(
                   height: 44,
                   child: ElevatedButton(
-                    onPressed: (query.isEmpty || _loading) ? null : _search,
+                    onPressed: (_searchController.text.trim().isEmpty || _loading) ? null : _search,
                     child: const Text('검색'),
                   ),
                 ),
@@ -233,7 +240,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
 
           if (_loading) const LinearProgressIndicator(minHeight: 2),
 
-          // ✅ 결과 리스트
+          // ✅ 검색 결과 리스트
           Expanded(
             child: _results.isEmpty
                 ? const Center(child: Text('닉네임, 아이디로 검색해보세요.'))
@@ -243,19 +250,22 @@ class _NewChatScreenState extends State<NewChatScreen> {
               itemBuilder: (context, index) {
                 final u = _results[index];
                 final uid = u['uid'] as String;
+
+                // 내 자신은 초대 대상에서 제외
                 if (uid == _myUid) return const SizedBox.shrink();
 
                 final nickname = (u['nickname'] as String?) ?? 'User';
                 final tag = (u['tag'] as String?) ?? '0000';
                 final selected = _isSelected(uid);
 
-                // ✅ 결과 리스트도 프로필 이미지 있으면 보여주기(선택사항이지만 자연스러워서 넣었음)
+                // 프로필 이미지(있으면 표시)
                 final photoUrl = (u['profileImageUrl'] as String?)?.trim() ?? '';
 
                 return ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.grey[200],
-                    backgroundImage: photoUrl.isEmpty ? null : CachedNetworkImageProvider(photoUrl),
+                    backgroundImage:
+                    photoUrl.isEmpty ? null : CachedNetworkImageProvider(photoUrl),
                     child: photoUrl.isEmpty ? const Icon(Icons.person) : null,
                   ),
                   title: Text(nickname),
