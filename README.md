@@ -1,10 +1,10 @@
-##📱 취준생 커뮤니티 앱 (Flutter)
+## 📱 취준생 커뮤니티 앱 (Flutter)
 
 Android / iOS 지원
 고급 모바일 프로그래밍 팀 프로젝트
 대학생·취준생을 위한 취업 커뮤니티 앱
 
-##✨ 핵심 기능
+## ✨ 핵심 기능
 
 커뮤니티 배정/변경 기반 맞춤형 게시판
 
@@ -14,7 +14,7 @@ Android / iOS 지원
 
 1:1 채팅, 챌린지/XP(참여 유도)
 
-##🧱 아키텍처 요약
+## 🧱 아키텍처 요약
 
 Feature-first 구조(features/도메인별) + models/screens/services/widgets 계층 분리
 
