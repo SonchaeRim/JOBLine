@@ -5,20 +5,14 @@ Android / iOS 지원
 대학생·취준생을 위한 취업 커뮤니티 앱
 
 ## ✨ 핵심 기능
-
-커뮤니티 배정/변경 기반 맞춤형 게시판
-
-게시글/댓글/좋아요
-
-일정 관리 및 마감 알림(FCM)
-
-1:1 채팅, 챌린지/XP(참여 유도)
+- 커뮤니티 배정/변경 기반 맞춤형 게시판
+- 게시글/댓글/좋아요
+- 일정 관리 및 마감 알림(FCM)
+- 1:1 채팅, 챌린지/XP(참여 유도)
 
 ## 🧱 아키텍처 요약
-
-Feature-first 구조(features/도메인별) + models/screens/services/widgets 계층 분리
-
-Firebase(Auth/Firestore/Storage/FCM) 기반 데이터·실시간 기능 구현
+- Feature-first 구조(features/도메인별) + models/screens/services/widgets 계층 분리
+- Firebase(Auth/Firestore/Storage/FCM) 기반 데이터·실시간 기능 구현
 
 ---
 
@@ -33,7 +27,24 @@ Firebase(Auth/Firestore/Storage/FCM) 기반 데이터·실시간 기능 구현
 
 ---
 
-## 🏗️ 폴더 구조
+## ⚙️ 개발 환경
+- **Flutter 3.35.7**
+- **Dart 3.9.2**
+- **Firebase (Auth, Firestore, Storage, FCM)**
+- **Android Studio**
+
+---
+
+## 🚀 실행 방법
+- flutter pub get
+- flutter run
+
+
+Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleService-Info.plist)은 프로젝트 환경에 따라 별도 적용이 필요할 수 있습니다.
+
+---
+
+## 🏗️ 폴더 구조 요약
 
 
 | Path            | 설명                            |
@@ -61,6 +72,150 @@ Firebase(Auth/Firestore/Storage/FCM) 기반 데이터·실시간 기능 구현
 | `services/` | 비즈니스 로직 / Firebase 연동 / CRUD |
 | `widgets/`  | 재사용 UI 컴포넌트                  |
 
+
+---
+
+## 📌 구현 상세 (접기)
+
+<details>
+<summary><b>📂 파일/폴더 상세 설명 펼치기</b></summary>
+
+---
+
+## 🧩 main.dart
+- 앱 진입점 (`runApp()`)
+- 라우팅 및 테마 설정
+
+---
+
+## 📂 config/ 환경 설정 (Firebase, 상수 등)
+
+| 파일명 | 설명 |
+|---|---|
+| `firebase_options.dart` | Firebase 초기 설정 자동 생성 파일 (`flutterfire configure`) |
+| `app_config.dart` | 환경 설정 상수 (앱 이름, 버전, Firestore 컬렉션 이름 등) |
+
+---
+
+## 📂 core/ 전역 공통 리소스 (테마, 색상, 유틸, 공용 위젯)
+
+| 파일명 | 설명 |
+|---|---|
+| `app_colors.dart` / `app_text_styles.dart` | 전역 색상·폰트 정의 |
+| `helpers.dart` | 날짜 포맷 등 공통 함수 |
+| `validators.dart` | 입력값 유효성 검사 (이메일, 비밀번호 등) |
+| `common_button.dart` / `input_field.dart` | 공통 버튼/입력창 위젯 |
+
+---
+
+## 📂 routes/ 라우팅(화면 이동) 정의
+
+| 파일명 | 설명 |
+|---|---|
+| `app_routes.dart` | 화면 이동 설정(go_router / Navigator) |
+| `route_names.dart` | 라우트 이름 상수화 (ex: `/login`, `/board/detail`) |
+
+---
+
+## 📂 features/auth/ (로그인·프로필·미디어)
+
+| 파일명 | 설명 |
+|---|---|
+| `models/user_profile.dart` | 사용자 정보 데이터 구조 |
+| `screens/login_screen.dart` | 이메일 로그인 화면 |
+| `screens/signup_screen.dart` | 회원가입 화면 |
+| `screens/profile_screen.dart` | 프로필 조회 화면 |
+| `screens/profile_edit_screen.dart` | 프로필 수정(사진 업로드 포함) |
+| `services/auth_service.dart` | Firebase Auth 로그인/회원가입 |
+| `services/profile_service.dart` | Firestore/Storage 프로필 연동 |
+| `widgets/profile_avatar.dart` | 프로필 이미지 위젯 |
+
+---
+
+## 📂 features/board/ (게시판·댓글)
+
+| 파일명 | 설명 |
+|---|---|
+| `models/post.dart` | 게시글 데이터 모델 |
+| `models/board_category.dart` | 게시판 카테고리 정의 |
+| `screens/board_tabs_screen.dart` | 게시판 탭별 목록 |
+| `screens/post_editor_screen.dart` | 게시글 작성/수정 |
+| `screens/post_detail_screen.dart` | 게시글 상세(댓글/좋아요) |
+| `services/board_service.dart` | 게시글 CRUD 및 Firestore 연동 |
+| `services/report_block_service.dart` | 게시글 신고 및 차단 |
+| `widgets/post_card.dart` | 게시글 카드 UI |
+| `widgets/comment_item.dart` | 댓글 UI |
+
+---
+
+## 📂 features/calendar/ (일정·알림)
+
+| 파일명 | 설명 |
+|---|---|
+| `models/schedule.dart` | 일정 모델 |
+| `screens/calendar_screen.dart` | 월별 달력 및 리스트 |
+| `screens/schedule_detail_screen.dart` | 일정 상세/편집 |
+| `services/calendar_service.dart` | 일정 CRUD |
+| `services/deadline_alarm_service.dart` | 마감 알림(FCM) |
+| `widgets/calendar_month_view.dart` | 달력 위젯 |
+| `widgets/schedule_card.dart` | 일정 카드 UI |
+
+---
+
+## 📂 features/challenge/ (챌린지·인증)
+
+| 파일명 | 설명 |
+|---|---|
+| `models/challenge.dart` | 챌린지 구조 |
+| `models/proof_result.dart` | 인증 결과 |
+| `screens/challenge_list_screen.dart` | 챌린지 목록 |
+| `screens/challenge_detail_screen.dart` | 챌린지 상세 |
+| `screens/proof_camera_screen.dart` | 인증 사진 촬영 |
+| `services/challenge_service.dart` | 진행 관리 |
+| `services/proof_service.dart` | 인증 저장/XP 연동 |
+| `widgets/challenge_card.dart` | 챌린지 카드 |
+| `widgets/progress_bar.dart` | 진행바 |
+
+---
+
+## 📂 features/chat/ (1:1 채팅)
+
+| 파일명 | 설명 |
+|---|---|
+| `models/chat_room.dart` | 채팅방 구조 |
+| `models/message.dart` | 메시지 구조 |
+| `screens/chat_list_screen.dart` | 채팅 목록 |
+| `screens/chat_room_screen.dart` | 채팅방 |
+| `services/chat_service.dart` | Firestore 실시간 채팅 |
+| `services/block_service.dart` | 사용자 차단 |
+| `widgets/message_bubble.dart` | 말풍선 UI |
+| `widgets/chat_input_field.dart` | 입력창 |
+
+---
+
+## 📂 features/community/ (커뮤니티 배정/변경)
+
+| 파일명 | 설명 |
+|---|---|
+| `models/community.dart` | 커뮤니티 구조 |
+| `screens/community_assign_screen.dart` | 초기 배정 화면 |
+| `screens/community_main_screen.dart` | 커뮤니티 메인 |
+| `screens/community_switch_screen.dart` | 변경/탐색 화면 |
+| `services/community_service.dart` | 자동 배정/연동 로직 |
+| `widgets/community_card.dart` | 커뮤니티 카드 |
+
+---
+
+## 📂 features/xp/ (경험치/레벨)
+
+| 파일명 | 설명 |
+|---|---|
+| `models/xp_rule.dart` | XP 규칙 |
+| `services/xp_service.dart` | XP 계산/누적/저장 |
+| `widgets/xp_badge.dart` | XP 배지 |
+| `widgets/level_progress_bar.dart` | 레벨 진행바 |
+
+</details>
 
 
 ---
@@ -214,13 +369,6 @@ Firebase(Auth/Firestore/Storage/FCM) 기반 데이터·실시간 기능 구현
 
 ---
 
-## ⚙️ 개발 환경
-- **Flutter 3.35.7**
-- **Dart 3.9.2**
-- **Firebase (Auth, Firestore, Storage, FCM)**
-- **Android Studio**
-
----
 
 ## 🚀 설치 패키지 주소
 | Package (name:version)                 | Link                                                                                                         |
