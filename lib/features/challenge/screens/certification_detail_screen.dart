@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:io';
 import '../models/certification.dart';
 import '../services/proof_service.dart';
 import '../utils/admin_utils.dart';
@@ -26,7 +25,6 @@ class CertificationDetailScreen extends StatefulWidget {
 class _CertificationDetailScreenState extends State<CertificationDetailScreen> {
   final ProofService _proofService = ProofService();
   bool _isAdmin = false;
-  bool _isCheckingAdmin = true;
 
   @override
   void initState() {
@@ -38,7 +36,6 @@ class _CertificationDetailScreenState extends State<CertificationDetailScreen> {
     final isAdmin = await AdminUtils.isAdmin();
     setState(() {
       _isAdmin = isAdmin;
-      _isCheckingAdmin = false;
     });
   }
 
@@ -142,7 +139,7 @@ class _CertificationDetailScreenState extends State<CertificationDetailScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('인증이 승인되었습니다.${xpAmount != null ? ' (${xpAmount} XP 지급)' : ''}'),
+            content: Text('인증이 승인되었습니다.${xpAmount != null ? ' ($xpAmount XP 지급)' : ''}'),
             backgroundColor: Colors.green,
           ),
         );

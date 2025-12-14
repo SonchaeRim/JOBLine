@@ -755,38 +755,27 @@ class _PhotoProofFormScreenState
         return null;
       }
 
-      // 인증 상태 확인
       final auth = FirebaseAuth.instance;
       final currentUser = auth.currentUser;
       if (currentUser == null) {
         throw Exception('로그인이 필요합니다. Storage 업로드를 위해 인증이 필요합니다.');
       }
-      debugPrint('현재 사용자: ${currentUser.uid}');
 
-      // 파일 존재 확인
       if (!await widget.imageFile!.exists()) {
         throw Exception('이미지 파일을 찾을 수 없습니다.');
       }
 
-      // 파일 크기 확인 (10MB 제한)
       final fileSize = await widget.imageFile!.length();
-      const maxSize = 10 * 1024 * 1024; // 10MB
+      const maxSize = 10 * 1024 * 1024;
       if (fileSize > maxSize) {
         throw Exception('이미지 크기가 너무 큽니다. (최대 10MB)');
       }
-      debugPrint('파일 크기: ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB');
 
-      // Storage 인스턴스 확인
       final storage = FirebaseStorage.instance;
-      debugPrint('Storage 버킷: ${storage.app.options.storageBucket ?? "설정되지 않음"}');
-      
       final fileName = '${widget.userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final storagePath = 'challenge_proofs/$fileName';
-      debugPrint('업로드 경로: $storagePath');
-      
       final storageRef = storage.ref().child(storagePath);
 
-      // 업로드 메타데이터 설정
       final metadata = SettableMetadata(
         contentType: 'image/jpeg',
         customMetadata: {
@@ -795,28 +784,15 @@ class _PhotoProofFormScreenState
         },
       );
 
-      debugPrint('업로드 시작...');
-      // 업로드 작업 시작 및 완료 대기
       final uploadTask = storageRef.putFile(
         widget.imageFile!,
         metadata,
       );
       
-      // 업로드 진행 상황 모니터링
-      uploadTask.snapshotEvents.listen((snapshot) {
-        final progress = snapshot.bytesTransferred / snapshot.totalBytes;
-        debugPrint('업로드 진행률: ${(progress * 100).toStringAsFixed(1)}%');
-      });
-      
-      // 업로드 완료 대기
       final snapshot = await uploadTask;
-      debugPrint('업로드 완료 상태: ${snapshot.state}');
       
-      // 업로드가 성공적으로 완료되었는지 확인
       if (snapshot.state == TaskState.success) {
-        // 다운로드 URL 가져오기
         final downloadUrl = await storageRef.getDownloadURL();
-        debugPrint('업로드 성공: $downloadUrl');
         return downloadUrl;
       } else {
         throw Exception('업로드가 완료되지 않았습니다. 상태: ${snapshot.state}');
@@ -839,9 +815,6 @@ class _PhotoProofFormScreenState
         errorMessage += '${e.code}';
         detailedMessage = e.message ?? '알 수 없는 오류';
       }
-      
-      debugPrint('Firebase Storage 오류: ${e.code} - ${e.message}');
-      debugPrint('스택 트레이스: ${e.stackTrace}');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -868,9 +841,6 @@ class _PhotoProofFormScreenState
       }
       return null;
     } catch (e, stackTrace) {
-      debugPrint('업로드 오류: $e');
-      debugPrint('스택 트레이스: $stackTrace');
-      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

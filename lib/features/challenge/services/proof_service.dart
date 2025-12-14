@@ -1,16 +1,16 @@
+/// 인증 결과 관리 서비스 - 인증 생성, 승인, 거부, 삭제 및 XP 계산 처리
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../models/certification.dart';
 import '../../xp/services/xp_service.dart';
 import '../../xp/models/xp_rule.dart';
 
-/// 인증 결과 관리 서비스
 class ProofService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _collection = 'certifications'; // Firestore 컬렉션 이름
-  final XpService _xpService = XpService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Firestore 인스턴스
+  final String _collection = 'certifications'; // 인증 컬렉션 이름
+  final XpService _xpService = XpService(); // XP 서비스
 
-  /// 인증 유형에 따라 XP 계산 (public 메서드로 노출)
+  /// 인증 유형에 따라 XP 계산
   int calculateCertificationXp(Certification certification) {
     if (certification.certificationType == null) {
       return 0;
@@ -18,7 +18,6 @@ class ProofService {
 
     final type = certification.certificationType!;
     
-    // otherActivity와 exhibition은 certificationDetails가 없어도 기본 XP 지급
     if (type == CertificationType.otherActivity) {
       return XpRule.otherActivityXp;
     }
@@ -26,7 +25,6 @@ class ProofService {
       return XpRule.exhibitionParticipationXp;
     }
     
-    // 나머지 타입은 certificationDetails가 필요
     if (certification.certificationDetails == null) {
       return 0;
     }
@@ -35,29 +33,26 @@ class ProofService {
 
     switch (type) {
       case CertificationType.license:
-        // 자격증
-        final licenseType = details['licenseType'] as String?; // 'national', 'national_professional', 'private'
+        final licenseType = details['licenseType'] as String?;
         if (licenseType == 'national') {
-          final category = details['category'] as String?; // 'technical' or 'service'
+          final category = details['category'] as String?;
           final grade = details['grade'] as String?;
           return XpRule.getNationalLicenseXp(category ?? '', grade ?? '');
         } else if (licenseType == 'national_professional') {
           final grade = details['grade'] as String?;
           return XpRule.getNationalProfessionalLicenseXp(grade ?? '');
         } else if (licenseType == 'private') {
-          final privateType = details['privateType'] as String?; // 'national_approved' or 'registered'
+          final privateType = details['privateType'] as String?;
           final grade = details['grade'] as String?;
           return XpRule.getPrivateLicenseXp(privateType ?? '', grade ?? '');
         }
         return 0;
 
       case CertificationType.publicServiceExam:
-        // 공무원 시험
         final examType = details['examType'] as String?;
         return XpRule.getPublicServiceExamXp(examType ?? '');
 
       case CertificationType.languageExam:
-        // 외국어 시험
         final examType = details['examType'] as String?;
         final score = details['score'] ?? details['grade'];
         
@@ -72,23 +67,19 @@ class ProofService {
                    examType == 'IELTS') {
           return XpRule.getEnglishExamXp(examType ?? '', score);
         } else {
-          // 기타 외국어 시험
           final grade = score?.toString() ?? '';
           return XpRule.getOtherLanguageExamXp(examType ?? '', grade);
         }
 
       case CertificationType.contest:
-        // 공모전·대회
-        final scale = details['scale'] as String?; // 'international', 'national', 'local'
-        final result = details['result'] as String?; // '대상', '입상', '입선', '참가'
+        final scale = details['scale'] as String?;
+        final result = details['result'] as String?;
         return XpRule.getContestXp(scale ?? '', result ?? '');
 
       case CertificationType.exhibition:
-        // 전시회·공연
         return XpRule.exhibitionParticipationXp;
 
       case CertificationType.otherActivity:
-        // 기타 활동
         return XpRule.otherActivityXp;
     }
   }
@@ -96,13 +87,11 @@ class ProofService {
   /// 인증 결과 등록
   Future<String> createCertification(Certification certification) async {
     try {
-      // XP 계산 (인증 유형에 따라)
       int calculatedXp = certification.xpEarned;
       if (calculatedXp == 0 && certification.certificationType != null) {
         calculatedXp = calculateCertificationXp(certification);
       }
 
-      // 계산된 XP로 인증 객체 업데이트
       final certificationWithXp = Certification(
         id: certification.id,
         challengeId: certification.challengeId,
@@ -118,12 +107,10 @@ class ProofService {
         certificationDetails: certification.certificationDetails,
       );
 
-      // 인증 결과 저장
       final docRef = await _firestore.collection(_collection).add(
         certificationWithXp.toFirestore(),
       );
 
-      // XP 부여 (승인된 경우에만)
       if (certification.reviewStatus == ReviewStatus.approved && calculatedXp > 0) {
         await _xpService.addXp(
           userId: certification.userId,
@@ -139,8 +126,7 @@ class ProofService {
     }
   }
 
-  /// 인증 승인 처리 (관리자가 승인할 때)
-  /// [xpAmount] 관리자가 직접 지정한 XP (null이면 자동 계산)
+  /// 인증 승인 처리 및 XP 부여
   Future<void> approveCertification(String certificationId, {int? xpAmount}) async {
     try {
       final certDoc = await _firestore.collection(_collection).doc(certificationId).get();
@@ -150,31 +136,26 @@ class ProofService {
 
       final certification = Certification.fromFirestore(certDoc);
       
-      // 이미 승인된 경우 스킵
       if (certification.reviewStatus == ReviewStatus.approved) {
         return;
       }
 
-      // XP 결정: 관리자가 지정한 값이 있으면 사용, 없으면 자동 계산
       int finalXp;
       if (xpAmount != null) {
         finalXp = xpAmount;
       } else {
-        // 자동 계산
         finalXp = certification.xpEarned;
         if (finalXp == 0 && certification.certificationType != null) {
           finalXp = calculateCertificationXp(certification);
         }
       }
 
-      // 승인 상태 업데이트 및 XP 부여
       await _firestore.collection(_collection).doc(certificationId).update({
         'isApproved': true,
         'reviewStatus': ReviewStatus.approved.name,
         'xpEarned': finalXp,
       });
 
-      // XP 부여
       if (finalXp > 0) {
         await _xpService.addXp(
           userId: certification.userId,
@@ -188,8 +169,7 @@ class ProofService {
     }
   }
 
-  /// 인증 거부 처리 (관리자가 거부할 때)
-  /// [rejectionReason] 반려 사유
+  /// 인증 거부 처리 및 XP 차감
   Future<void> rejectCertification(String certificationId, {String? rejectionReason}) async {
     try {
       final certDoc = await _firestore.collection(_collection).doc(certificationId).get();
@@ -199,12 +179,10 @@ class ProofService {
 
       final certification = Certification.fromFirestore(certDoc);
       
-      // 이미 거부된 경우 스킵
       if (certification.reviewStatus == ReviewStatus.rejected) {
         return;
       }
 
-      // 이미 승인되어 XP가 지급된 경우 XP 차감
       if (certification.reviewStatus == ReviewStatus.approved && certification.xpEarned > 0) {
         await _xpService.addXp(
           userId: certification.userId,
@@ -214,7 +192,6 @@ class ProofService {
         );
       }
 
-      // 거부 상태 업데이트
       final updateData = {
         'isApproved': false,
         'reviewStatus': ReviewStatus.rejected.name,
@@ -231,7 +208,7 @@ class ProofService {
     }
   }
 
-  /// 사용자의 모든 인증 목록 가져오기
+  /// 사용자의 모든 인증 목록 조회
   Stream<List<Certification>> getUserCertifications(String userId) {
     return _firestore
         .collection(_collection)
@@ -243,22 +220,19 @@ class ProofService {
             .toList());
   }
 
-  /// 특정 인증 상세 정보 가져오기 (Stream)
+  /// 특정 인증 상세 정보 스트림 조회
   Stream<DocumentSnapshot> getCertificationStream(String certificationId) {
     return _firestore.collection(_collection).doc(certificationId).snapshots();
   }
 
-  /// 검토할 항목이 있는 유저 목록 가져오기 (관리자용)
-  /// 각 유저별로 pending 상태의 인증 개수를 포함
+  /// 검토 대기 중인 인증이 있는 사용자 목록 조회 (관리자용)
   Future<List<Map<String, dynamic>>> getUsersWithPendingCertifications() async {
     try {
-      // 검토 중인 인증들만 가져오기
       final pendingSnapshot = await _firestore
           .collection(_collection)
           .where('reviewStatus', isEqualTo: 'pending')
           .get();
 
-      // 유저별로 그룹화하여 개수 계산
       final Map<String, int> userPendingCounts = {};
       final Set<String> userIds = {};
 
@@ -271,7 +245,6 @@ class ProofService {
         }
       }
 
-      // 유저 정보 가져오기
       final List<Map<String, dynamic>> usersWithCounts = [];
       
       for (var userId in userIds) {
@@ -286,7 +259,6 @@ class ProofService {
               'pendingCount': userPendingCounts[userId] ?? 0,
             });
           } else {
-            // 유저 정보가 없어도 인증이 있으면 표시
             usersWithCounts.add({
               'userId': userId,
               'nickname': '사용자',
@@ -295,7 +267,6 @@ class ProofService {
             });
           }
         } catch (e) {
-          // 유저 정보 가져오기 실패해도 계속 진행
           usersWithCounts.add({
             'userId': userId,
             'nickname': '사용자',
@@ -305,7 +276,6 @@ class ProofService {
         }
       }
 
-      // 검토할 항목이 많은 순으로 정렬
       usersWithCounts.sort((a, b) => (b['pendingCount'] as int).compareTo(a['pendingCount'] as int));
 
       return usersWithCounts;
@@ -314,7 +284,7 @@ class ProofService {
     }
   }
 
-  /// 인증 삭제
+  /// 인증 삭제 및 관련 이미지와 XP 정리
   Future<void> deleteCertification(String certificationId) async {
     try {
       final certDoc = await _firestore.collection(_collection).doc(certificationId).get();
@@ -324,16 +294,12 @@ class ProofService {
 
       final certification = Certification.fromFirestore(certDoc);
       
-      // Storage에서 이미지 삭제
       if (certification.imageUrl != null && certification.imageUrl!.isNotEmpty) {
         try {
-          // imageUrl에서 경로 추출 (예: https://firebasestorage.googleapis.com/v0/b/.../photo_proofs/...)
           final imageUrl = certification.imageUrl!;
-          // URL에서 경로 부분 추출
           final uri = Uri.parse(imageUrl);
           final pathSegments = uri.pathSegments;
           
-          // 'photo_proofs' 또는 'challenge_proofs' 경로 찾기
           int photoProofsIndex = -1;
           for (int i = 0; i < pathSegments.length; i++) {
             if (pathSegments[i] == 'photo_proofs' || pathSegments[i] == 'challenge_proofs') {
@@ -343,22 +309,18 @@ class ProofService {
           }
           
           if (photoProofsIndex >= 0 && photoProofsIndex < pathSegments.length - 1) {
-            // 'photo_proofs' 또는 'challenge_proofs' 이후의 경로 구성
             final storagePath = pathSegments.sublist(photoProofsIndex).join('/');
             final storageRef = FirebaseStorage.instance.ref().child(storagePath);
             await storageRef.delete();
           } else {
-            // URL에서 직접 경로를 추출할 수 없는 경우, 전체 URL을 사용
             final storageRef = FirebaseStorage.instance.refFromURL(imageUrl);
             await storageRef.delete();
           }
         } catch (storageError) {
-          // Storage 삭제 실패해도 계속 진행 (이미지가 이미 삭제되었을 수 있음)
-          print('Storage 이미지 삭제 실패 (무시): $storageError');
+          // Storage 삭제 실패는 무시
         }
       }
       
-      // 이미 승인되어 XP가 지급된 경우 XP 차감
       if (certification.reviewStatus == ReviewStatus.approved && certification.xpEarned > 0) {
         await _xpService.addXp(
           userId: certification.userId,
@@ -368,30 +330,26 @@ class ProofService {
         );
       }
 
-      // 인증 문서 삭제
       await _firestore.collection(_collection).doc(certificationId).delete();
     } catch (e) {
       throw Exception('인증 삭제 실패: $e');
     }
   }
 
-  /// 인증 수정
+  /// 인증 정보 수정 및 재검토 상태로 변경
   Future<void> updateCertification(String certificationId, Certification certification) async {
     try {
-      // XP 재계산
       int calculatedXp = certification.xpEarned;
       if (calculatedXp == 0 && certification.certificationType != null) {
         calculatedXp = calculateCertificationXp(certification);
       }
 
-      // 기존 인증 정보 가져오기
       final oldCertDoc = await _firestore.collection(_collection).doc(certificationId).get();
       if (!oldCertDoc.exists) {
         throw Exception('인증 문서를 찾을 수 없습니다.');
       }
       final oldCert = Certification.fromFirestore(oldCertDoc);
 
-      // 수정된 인증 객체 생성
       final updatedCert = Certification(
         id: certificationId,
         challengeId: certification.challengeId,
@@ -399,15 +357,14 @@ class ProofService {
         imageUrl: certification.imageUrl,
         description: certification.description,
         proofDate: certification.proofDate,
-        createdAt: oldCert.createdAt, // 생성일은 유지
+        createdAt: oldCert.createdAt,
         isApproved: certification.isApproved,
-        reviewStatus: ReviewStatus.pending, // 수정 시 다시 검토 중 상태로
+        reviewStatus: ReviewStatus.pending,
         xpEarned: calculatedXp,
         certificationType: certification.certificationType,
         certificationDetails: certification.certificationDetails,
       );
 
-      // 기존에 승인되어 XP가 지급된 경우 XP 차감
       if (oldCert.reviewStatus == ReviewStatus.approved && oldCert.xpEarned > 0) {
         await _xpService.addXp(
           userId: certification.userId,
@@ -417,12 +374,9 @@ class ProofService {
         );
       }
 
-      // 인증 정보 업데이트
       await _firestore.collection(_collection).doc(certificationId).update(
         updatedCert.toFirestore(),
       );
-
-      // 수정 후 다시 승인되면 XP 부여 (승인 시점에 처리)
     } catch (e) {
       throw Exception('인증 수정 실패: $e');
     }

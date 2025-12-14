@@ -28,14 +28,8 @@ class CertificationThumbnail extends StatelessWidget {
               imageUrl: imageUrl!,
               fit: BoxFit.cover,
               memCacheWidth: (size * MediaQuery.of(context).devicePixelRatio).round(),
-              placeholder: (context, url) {
-                debugPrint('Loading image: $url');
-                return _buildPlaceholder();
-              },
-              errorWidget: (context, url, error) {
-                debugPrint('Image load error: $error for URL: $url');
-                return _buildPlaceholder();
-              },
+              placeholder: (context, url) => _buildPlaceholder(),
+              errorWidget: (context, url, error) => _buildPlaceholder(),
             ),
           ),
         ),

@@ -1,13 +1,13 @@
+/// XP 관리 서비스 - XP 추가, 조회, 등급 계산 및 로그 관리
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/rank.dart';
 
-/// XP 관리 서비스
 class XpService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _usersCollection = 'users'; // Firestore 컬렉션 이름
-  final String _xpLogsCollection = 'xp_logs'; // Firestore 컬렉션 이름
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Firestore 인스턴스
+  final String _usersCollection = 'users'; // 사용자 컬렉션 이름
+  final String _xpLogsCollection = 'xp_logs'; // XP 로그 컬렉션 이름
 
-  /// XP 추가
+  /// XP 추가 및 등급 업데이트
   Future<void> addXp({
     required String userId,
     required String action,
@@ -15,12 +15,10 @@ class XpService {
     String? referenceId,
   }) async {
     try {
-      // amount가 지정되지 않으면 0 (항상 amount를 지정해야 함)
       final xpAmount = amount ?? 0;
 
       if (xpAmount <= 0) return;
 
-      // 사용자 문서 가져오기
       final userDoc = _firestore.collection(_usersCollection).doc(userId);
       final userData = await userDoc.get();
 
@@ -32,14 +30,12 @@ class XpService {
       final newXp = currentXp + xpAmount;
       final newRank = RankUtil.getRank(newXp).name;
 
-      // 사용자 XP 업데이트
       await userDoc.set({
         'totalXp': newXp,
         'rank': newRank,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      // XP 로그 기록
       await _firestore.collection(_xpLogsCollection).add({
         'userId': userId,
         'action': action,
@@ -53,7 +49,7 @@ class XpService {
     }
   }
 
-  /// 사용자의 현재 XP와 등급 가져오기
+  /// 사용자의 현재 XP와 등급 조회
   Future<Map<String, dynamic>> getUserXp(String userId) async {
     try {
       final userDoc =
@@ -70,7 +66,6 @@ class XpService {
       final totalXp = (data['totalXp'] as int?) ?? 0;
       final rank = (data['rank'] as String?) ?? RankUtil.getRank(totalXp).name;
 
-      // rank 필드가 없으면 추가
       if (data['rank'] == null) {
         await userDoc.reference.update({'rank': rank});
       }
@@ -84,7 +79,7 @@ class XpService {
     }
   }
 
-  /// 사용자의 XP 스트림
+  /// 사용자의 XP 실시간 스트림 조회
   Stream<Map<String, dynamic>> getUserXpStream(String userId) {
     return _firestore
         .collection(_usersCollection)
@@ -102,10 +97,9 @@ class XpService {
       final totalXp = (data['totalXp'] as int?) ?? 0;
       final rank = (data['rank'] as String?) ?? RankUtil.getRank(totalXp).name;
 
-      // rank 필드가 없으면 백그라운드에서 추가 (스트림 내부에서는 await 불가)
       if (data['rank'] == null) {
         doc.reference.update({'rank': rank}).catchError((e) {
-          // 업데이트 실패는 무시 (다음 스트림 업데이트에서 다시 시도)
+          // 업데이트 실패는 무시
         });
       }
 
@@ -116,7 +110,7 @@ class XpService {
     });
   }
 
-  /// 사용자의 XP 로그 가져오기
+  /// 사용자의 XP 변경 로그 조회
   Stream<List<Map<String, dynamic>>> getXpLogs(String userId, {int limit = 50}) {
     return _firestore
         .collection(_xpLogsCollection)

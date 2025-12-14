@@ -1,10 +1,10 @@
+/// 캘린더 및 일정 관리 서비스 - 일정 CRUD 및 날짜별 조회
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/schedule.dart';
 
-/// 캘린더 및 일정 관리 서비스
 class CalendarService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _collection = 'schedules'; // Firestore 컬렉션 이름
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Firestore 인스턴스
+  final String _collection = 'schedules'; // 일정 컬렉션 이름
 
   /// 일정 생성
   Future<String> createSchedule(Schedule schedule) async {
@@ -24,7 +24,7 @@ class CalendarService {
       await _firestore.collection(_collection).doc(scheduleId).update(
         schedule.copyWith(
           id: scheduleId,
-          updatedAt: DateTime.now().toUtc(), // UTC로 변환
+          updatedAt: DateTime.now().toUtc(),
         ).toFirestore(),
       );
     } catch (e) {
@@ -53,14 +53,12 @@ class CalendarService {
             .toList());
   }
 
-  /// 특정 날짜 범위의 일정 가져오기
-  /// startDate와 endDate는 로컬 시간으로 받아서 UTC로 변환하여 쿼리
+  /// 특정 날짜 범위의 일정 조회
   Stream<List<Schedule>> getSchedulesByDateRange(
     String userId,
     DateTime startDate,
     DateTime endDate,
   ) {
-    // 로컬 시간을 UTC로 변환
     final startDateUtc = startDate.isUtc ? startDate : startDate.toUtc();
     final endDateUtc = endDate.isUtc ? endDate : endDate.toUtc();
     
@@ -77,13 +75,11 @@ class CalendarService {
             .toList());
   }
 
-  /// 특정 날짜의 일정 가져오기
-  /// date는 로컬 시간으로 받아서 UTC로 변환하여 쿼리
+  /// 특정 날짜의 일정 조회
   Future<List<Schedule>> getSchedulesByDate(
     String userId,
     DateTime date,
   ) async {
-    // 로컬 날짜의 시작과 끝을 UTC로 변환
     final startOfDayLocal = DateTime(date.year, date.month, date.day);
     final endOfDayLocal = DateTime(date.year, date.month, date.day, 23, 59, 59);
     final startOfDayUtc = startOfDayLocal.toUtc();
@@ -101,14 +97,12 @@ class CalendarService {
     return snapshot.docs.map((doc) => Schedule.fromFirestore(doc)).toList();
   }
 
-  /// 마감일이 D-1인 일정 가져오기 (알림용)
-  /// 로컬 시간 기준으로 내일 날짜를 계산한 후 UTC로 변환하여 쿼리
+  /// D-1 마감일 일정 조회 (알림용)
   Future<List<Schedule>> getDeadlineSchedules(String userId) async {
     final tomorrowLocal = DateTime.now().add(const Duration(days: 1));
     final startOfTomorrowLocal = DateTime(tomorrowLocal.year, tomorrowLocal.month, tomorrowLocal.day);
     final endOfTomorrowLocal =
         DateTime(tomorrowLocal.year, tomorrowLocal.month, tomorrowLocal.day, 23, 59, 59);
-    // UTC로 변환
     final startOfTomorrowUtc = startOfTomorrowLocal.toUtc();
     final endOfTomorrowUtc = endOfTomorrowLocal.toUtc();
 

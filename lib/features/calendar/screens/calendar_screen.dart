@@ -163,7 +163,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   IconButton(
                     icon: const Icon(Icons.arrow_drop_down),
                     onPressed: () {
-                      // TODO: 월 선택 다이얼로그
+                      // 월 선택 기능
                     },
                   ),
                 ],
