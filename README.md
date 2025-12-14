@@ -86,7 +86,7 @@
 
 ---
 
-### 📂 features/auth/  *(B 담당 — 로그인·프로필·미디어)*
+### 📂 features/auth/  *(로그인·프로필·미디어)*
 
 | 파일명 | 설명 |
 |--------|------|
@@ -101,7 +101,7 @@
 
 ---
 
-### 📂 features/board/  *(C 담당 — 게시판·댓글)*
+### 📂 features/board/  *(게시판·댓글)*
 
 | 파일명 | 설명 |
 |--------|------|
@@ -117,7 +117,7 @@
 
 ---
 
-### 📂 features/calendar/  *(D 담당 — 일정·알림)*
+### 📂 features/calendar/  *(일정·알림)*
 
 | 파일명 | 설명 |
 |--------|------|
@@ -131,7 +131,7 @@
 
 ---
 
-### 📂 features/challenge/  *(D 담당 — 챌린지·인증)*
+### 📂 features/challenge/  *(챌린지·인증)*
 
 | 파일명 | 설명 |
 |--------|------|
@@ -147,7 +147,7 @@
 
 ---
 
-### 📂 features/chat/  *(D 담당 — 1:1 채팅)*
+### 📂 features/chat/  *(1:1 채팅)*
 
 | 파일명 | 설명 |
 |--------|------|
@@ -162,7 +162,7 @@
 
 ---
 
-### 📂 features/common/  *(A 담당 — 앱 뼈대/탭바)*
+### 📂 features/common/  *(앱 뼈대/탭바)*
 
 | 파일명 | 설명 |
 |--------|------|
@@ -174,7 +174,7 @@
 
 ---
 
-### 📂 features/community/  *(C → A 협업 — 커뮤니티 배정/변경)*
+### 📂 features/community/  *(커뮤니티 배정/변경)*
 
 | 파일명 | 설명 |
 |--------|------|
@@ -187,7 +187,7 @@
 
 ---
 
-### 📂 features/xp/  *(D 주 담당 · B 협업 — 경험치/레벨 시스템)*
+### 📂 features/xp/  *(경험치/레벨 시스템)*
 
 | 파일명 | 설명 |
 |--------|------|
@@ -207,24 +207,25 @@
 ---
 
 ## 🚀 설치 패키지 주소
+| Package (name:version)                 | Link                                                                                                         |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `path_provider: ^2.1.2`                | [https://pub.dev/packages/path_provider](https://pub.dev/packages/path_provider)                             |
+| `image_picker: ^1.0.7`                 | [https://pub.dev/packages/image_picker](https://pub.dev/packages/image_picker)                               |
+| `cached_network_image: ^3.4.1`         | [https://pub.dev/packages/cached_network_image](https://pub.dev/packages/cached_network_image)               |
+| `flutter_doc_scanner: ^0.0.16`         | [https://pub.dev/packages/flutter_doc_scanner](https://pub.dev/packages/flutter_doc_scanner)                 |
+| `permission_handler: ^11.3.1`          | [https://pub.dev/packages/permission_handler](https://pub.dev/packages/permission_handler)                   |
+| `firebase_storage: ^12.4.10`           | [https://pub.dev/packages/firebase_storage](https://pub.dev/packages/firebase_storage)                       |
+| `shared_preferences: ^2.2.2`           | [https://pub.dev/packages/shared_preferences](https://pub.dev/packages/shared_preferences)                   |
+| `cupertino_icons: ^1.0.8`              | [https://pub.dev/packages/cupertino_icons](https://pub.dev/packages/cupertino_icons)                         |
+| `firebase_core: ^3.10.0`               | [https://pub.dev/packages/firebase_core](https://pub.dev/packages/firebase_core)                             |
+| `firebase_auth: ^5.3.1`                | [https://pub.dev/packages/firebase_auth](https://pub.dev/packages/firebase_auth)                             |
+| `cloud_firestore: ^5.6.12`             | [https://pub.dev/packages/cloud_firestore](https://pub.dev/packages/cloud_firestore)                         |
+| `firebase_messaging: ^15.1.3`          | [https://pub.dev/packages/firebase_messaging](https://pub.dev/packages/firebase_messaging)                   |
+| `flutter_local_notifications: ^18.0.1` | [https://pub.dev/packages/flutter_local_notifications](https://pub.dev/packages/flutter_local_notifications) |
+| `intl: ^0.19.0`                        | [https://pub.dev/packages/intl](https://pub.dev/packages/intl)                                               |
+| `flutter_layout_grid: ^2.0.4`          | [https://pub.dev/packages/flutter_layout_grid](https://pub.dev/packages/flutter_layout_grid)                 |
+| `flutter_markdown: ^0.6.18`            | [https://pub.dev/packages/flutter_markdown](https://pub.dev/packages/flutter_markdown)                       |
 
-이름:버전 | 주소  
-path_provider: ^2.1.2  https://pub.dev/packages/path_provider
-  image_picker: ^1.0.7  https://pub.dev/packages/image_picker
-  cached_network_image: ^3.4.1 https://pub.dev/packages/cached_network_image
-  flutter_doc_scanner: ^0.0.16  https://pub.dev/packages/flutter_doc_scanner
-  permission_handler: ^11.3.1  https://pub.dev/packages/permission_handler
-  firebase_storage: ^12.4.10  https://pub.dev/packages/firebase_storage
-  shared_preferences: ^2.2.2  https://pub.dev/packages/shared_preferences
-  cupertino_icons: ^1.0.8  https://pub.dev/packages/cupertino_icons
-  firebase_core: ^3.10.0  https://pub.dev/packages/firebase_core
-  firebase_auth: ^5.3.1  https://pub.dev/packages/firebase_auth
-  cloud_firestore: ^5.6.12  https://pub.dev/packages/cloud_firestore
-  firebase_messaging: ^15.1.3  https://pub.dev/packages/firebase_messaging
-  flutter_local_notifications: ^18.0.1  https://pub.dev/packages/flutter_local_notifications
-  intl: ^0.19.0  https://pub.dev/packages/intl
-  flutter_layout_grid: ^2.0.4  https://pub.dev/packages/flutter_layout_grid
-  flutter_markdown: ^0.6.18  https://pub.dev/packages/flutter_markdown
 
 
 
