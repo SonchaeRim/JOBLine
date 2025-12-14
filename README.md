@@ -75,7 +75,7 @@ Firebase 설정 파일(예: firebase_options.dart, google-services.json, GoogleS
 
 ---
 
-## 📌 구현 상세 (접기)
+## 📌 구현 상세 ( 파일별 역할 )
 
 <details>
 <summary><b>📂 파일/폴더 상세 설명 펼치기</b></summary>
