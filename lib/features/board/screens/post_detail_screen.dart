@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class PostDetailScreen extends StatefulWidget {
-  final String? postId;
+  final String? postId; // 상세로 볼 게시글 ID
 
   const PostDetailScreen({
     super.key,
@@ -16,15 +16,16 @@ class PostDetailScreen extends StatefulWidget {
 }
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
-  final _commentController = TextEditingController();
-  bool _sending = false;
+  final _commentController = TextEditingController(); // 댓글 입력 컨트롤러
+  bool _sending = false; // 댓글 전송 중 여부(중복 전송 방지)
 
   @override
   void dispose() {
-    _commentController.dispose();
+    _commentController.dispose(); // 컨트롤러 해제
     super.dispose();
   }
 
+  // Firestore Timestamp를 화면 표시용 문자열로 변환
   String _fmtTs(Timestamp? ts) {
     if (ts == null) return '';
     final dt = ts.toDate();
@@ -32,6 +33,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
+  // 좋아요 토글(서브컬렉션 likes + likeCount 증감)
   Future<void> _toggleLike(DocumentReference<Map<String, dynamic>> postRef) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -41,8 +43,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       return;
     }
 
-    final likeRef = postRef.collection('likes').doc(user.uid);
+    final likeRef = postRef.collection('likes').doc(user.uid); // 내 좋아요 문서
 
+    // 트랜잭션으로 likeCount와 likes 문서를 원자적으로 처리
     await FirebaseFirestore.instance.runTransaction((tx) async {
       final postSnap = await tx.get(postRef);
       if (!postSnap.exists) return;
@@ -54,17 +57,20 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       final likeCount = raw is int ? raw : 0;
 
       if (likeSnap.exists) {
+        // 이미 좋아요면 취소
         tx.delete(likeRef);
         tx.update(postRef, {'likeCount': likeCount > 0 ? likeCount - 1 : 0});
       } else {
+        // 없으면 좋아요 추가
         tx.set(likeRef, {'createdAt': FieldValue.serverTimestamp()});
         tx.update(postRef, {'likeCount': likeCount + 1});
       }
     });
   }
 
+  // 댓글 등록 + 게시글 commentCount 증가
   Future<void> _submitComment(DocumentReference<Map<String, dynamic>> postRef) async {
-    if (_sending) return;
+    if (_sending) return; // 전송 중이면 무시
 
     final text = _commentController.text.trim();
     if (text.isEmpty) {
@@ -79,12 +85,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
 
+      // 댓글 작성자 표시 이름/ID 준비
       String authorName = '익명';
       String? authorId;
 
       if (user != null) {
         authorId = user.uid;
 
+        // users/{uid}에서 nickname 또는 name 가져오기
         final profileSnap = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -99,8 +107,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         }
       }
 
-      final newCommentRef = postRef.collection('comments').doc();
+      final newCommentRef = postRef.collection('comments').doc(); // 새 댓글 문서
 
+      // 댓글 저장 + commentCount 증가를 트랜잭션으로 처리
       await FirebaseFirestore.instance.runTransaction((tx) async {
         tx.set(newCommentRef, {
           'content': text,
@@ -114,7 +123,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         });
       });
 
-      _commentController.clear();
+      _commentController.clear(); // 입력창 초기화
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('댓글 저장 중 오류: $e')),
@@ -124,9 +133,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     }
   }
 
+  // 더보기 메뉴(내 글이면 삭제 가능)
   Future<void> _openMoreMenu(DocumentReference<Map<String, dynamic>> postRef) async {
     final me = FirebaseAuth.instance.currentUser;
 
+    // 작성자 확인을 위해 게시글 1회 조회
     final snap = await postRef.get();
     if (!snap.exists || snap.data() == null) return;
 
@@ -134,6 +145,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final authorId = (data['authorId'] ?? '').toString();
     final isMine = (me != null && me.uid == authorId);
 
+    // 바텀시트로 메뉴 표시
     final selected = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -160,6 +172,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       },
     );
 
+    // 삭제 선택 시 확인 다이얼로그 후 삭제 수행
     if (selected == 'delete') {
       final ok = await showDialog<bool>(
         context: context,
@@ -181,11 +194,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
       if (ok == true) {
         await _deletePost(postRef);
-        if (mounted) Navigator.pop(context);
+        if (mounted) Navigator.pop(context); // 상세 화면 닫기
       }
     }
   }
 
+  // 게시글 삭제(작성자 확인 + 스토리지 이미지 삭제 + 서브컬렉션 정리)
   Future<void> _deletePost(DocumentReference<Map<String, dynamic>> postRef) async {
     final me = FirebaseAuth.instance.currentUser;
     if (me == null) {
@@ -202,6 +216,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       final data = snap.data()!;
       final authorId = (data['authorId'] ?? '').toString();
 
+      // 내 글인지 확인
       if (authorId != me.uid) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('내 글만 삭제할 수 있어요.')),
@@ -209,6 +224,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         return;
       }
 
+      // 게시글에 연결된 이미지가 있으면 Storage에서도 삭제 시도
       final rawImgs = data['imageUrls'];
       if (rawImgs is List) {
         for (final u in rawImgs) {
@@ -220,6 +236,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         }
       }
 
+      // 서브컬렉션(likes/comments) 문서들도 함께 삭제
       final likesSnap = await postRef.collection('likes').get();
       final commentsSnap = await postRef.collection('comments').get();
 
@@ -247,14 +264,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final postId = widget.postId;
+
+    // postId가 없으면 잘못된 접근 처리
     if (postId == null) {
       return const Scaffold(
         body: Center(child: Text('잘못된 게시글입니다.')),
       );
     }
 
-    final postRef = FirebaseFirestore.instance.collection('posts').doc(postId);
-    final me = FirebaseAuth.instance.currentUser;
+    final postRef = FirebaseFirestore.instance.collection('posts').doc(postId); // 게시글 문서 참조
+    final me = FirebaseAuth.instance.currentUser; // 현재 로그인 유저
 
     return Scaffold(
       appBar: AppBar(
@@ -262,11 +281,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.more_vert),
-            onPressed: () => _openMoreMenu(postRef),
+            onPressed: () => _openMoreMenu(postRef), // 더보기 메뉴
           ),
         ],
       ),
 
+      // 하단 댓글 입력 바
       bottomNavigationBar: SafeArea(
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -294,13 +314,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               const SizedBox(width: 8),
               IconButton(
                 icon: Icon(_sending ? Icons.hourglass_top : Icons.send),
-                onPressed: _sending ? null : () => _submitComment(postRef),
+                onPressed: _sending ? null : () => _submitComment(postRef), // 댓글 등록
               ),
             ],
           ),
         ),
       ),
 
+      // 게시글 문서 실시간 구독
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: postRef.snapshots(),
         builder: (context, postSnap) {
@@ -311,6 +332,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             return const Center(child: Text('삭제되었거나 없는 게시글입니다.'));
           }
 
+          // 게시글 데이터 추출
           final data = postSnap.data!.data()!;
           final title = (data['title'] ?? '').toString();
           final content = (data['content'] ?? '').toString();
@@ -320,7 +342,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           final rawLike = data['likeCount'];
           final likeCount = rawLike is int ? rawLike : 0;
 
-          // ----- 이미지 URL들 꺼내기---------
+          // 이미지 URL 리스트 추출
           final rawImgs = data['imageUrls'];
           final imageUrls = (rawImgs is List)
               ? rawImgs
@@ -329,10 +351,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               .toList()
               : <String>[];
 
+          // 내 좋아요 문서 실시간 구독(로그인 안하면 빈 스트림)
           final likeDocStream = (me == null)
               ? const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty()
               : postRef.collection('likes').doc(me.uid).snapshots();
 
+          // 댓글 목록 실시간 구독
           return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: postRef
                 .collection('comments')
@@ -347,7 +371,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 작성자 헤더
+                    // 작성자/작성시간 표시
                     Row(
                       children: [
                         const CircleAvatar(
@@ -387,7 +411,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       style: const TextStyle(fontSize: 16, height: 1.55),
                     ),
 
-                    // ---------사진 섹션 --------
+                    // 이미지 섹션(있을 때만 표시)
                     if (imageUrls.isNotEmpty) ...[
                       const SizedBox(height: 14),
                       SizedBox(
@@ -428,12 +452,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     const SizedBox(height: 16),
                     const Divider(),
 
-                    // ------ 공감/댓글수 바 -----------
+                    // 공감/댓글수 표시 바
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          // 좋아요 여부를 실시간으로 보고 아이콘 변경
                           StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                             stream: likeDocStream,
                             builder: (context, likeSnap) {
@@ -485,7 +510,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     const Divider(),
                     const SizedBox(height: 10),
 
-                    // ---------- 댓글 리스트 ----------
+                    // 댓글 리스트
                     if (commentSnap.connectionState == ConnectionState.waiting)
                       const Padding(
                         padding: EdgeInsets.all(16),
@@ -543,7 +568,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         },
                       ),
 
-                    const SizedBox(height: 80),
+                    const SizedBox(height: 80), // 하단 입력바와 겹침 방지 여백
                   ],
                 ),
               );

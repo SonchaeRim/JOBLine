@@ -7,6 +7,7 @@ import '../../../routes/route_names.dart';
 class BoardTabsScreen extends StatelessWidget {
   const BoardTabsScreen({super.key});
 
+  // 게시판 목록(고정)
   static const boards = [
     {'id': 'free',   'title': '자유게시판',            'icon': Icons.push_pin},
     {'id': 'study',  'title': '스터디/프로젝트 게시판',  'icon': Icons.push_pin},
@@ -15,42 +16,51 @@ class BoardTabsScreen extends StatelessWidget {
     {'id': 'spec',   'title': '스펙 게시판',            'icon': Icons.push_pin},
   ];
 
-  // 유저 문서에서 mainCommunityId를 실시간으로 구독
+  // 현재 로그인한 유저의 mainCommunityId를 실시간으로 가져오는 스트림
   Stream<String?> _mainCommunityIdStream() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
+      // 로그인 안 된 경우: 빈 스트림 반환
       return const Stream<String?>.empty();
     }
 
+    // users/{uid} 문서 변화를 구독하고 mainCommunityId만 추출
     return FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
         .snapshots()
         .map((doc) {
       if (!doc.exists || doc.data() == null) return null;
+
       final data = doc.data() as Map<String, dynamic>;
       final v = data['mainCommunityId'];
       if (v == null) return null;
+
       final s = v.toString();
       if (s.isEmpty) return null;
+
       return s;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    // 테마 색상
     final primary = Theme.of(context).colorScheme.primary;
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
+    // mainCommunityId가 바뀌면 화면이 자동 갱신되도록 StreamBuilder 사용
     return StreamBuilder<String?>(
       stream: _mainCommunityIdStream(),
       builder: (context, snap) {
+        // 스트림 로딩 중이면 로딩 표시
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
         final communityId = snap.data;
 
+        // 커뮤니티가 없으면 안내 문구 표시
         if (communityId == null) {
           return Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -69,12 +79,15 @@ class BoardTabsScreen extends StatelessWidget {
           );
         }
 
+        // 커뮤니티가 있으면 게시판 목록 UI 표시
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 8),
+
+              // 상단 타이틀
               const Center(
                 child: Text(
                   'JL',
@@ -137,7 +150,7 @@ class BoardTabsScreen extends StatelessWidget {
 
               const SizedBox(height: 14),
 
-              // 회색 박스 카드들
+              // 게시판 카드 리스트
               Expanded(
                 child: ListView.separated(
                   itemCount: boards.length,
@@ -151,6 +164,7 @@ class BoardTabsScreen extends StatelessWidget {
                     return InkWell(
                       borderRadius: BorderRadius.circular(12),
                       onTap: () {
+                        // 게시글 목록 화면으로 이동하면서 boardId/title/communityId 전달
                         Navigator.pushNamed(
                           context,
                           RouteNames.postList,
