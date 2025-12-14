@@ -135,7 +135,7 @@ class _PostListScreenState extends State<PostListScreen> {
                     // createdAt이 null일 수도 있는 프로젝트면 여기 방어해줘야 함
                     final timeText = _fmtDate(p.createdAt);
 
-                    final commentCount = p.commentCount; // ✅ 여기서 바로 표시
+                    final commentCount = p.commentCount; // 여기서 바로 표시
                     final likeCount = p.likeCount ?? 0;  // likeCount 없으면 0 처리
 
                     return ListTile(
@@ -201,7 +201,7 @@ class _PostListScreenState extends State<PostListScreen> {
               'postId': null,
             },
           );
-          // ✅ StreamBuilder라서 여기서 _reload() 같은 거 필요 없음 (자동 반영)
+          // StreamBuilder라서 여기서 _reload() 같은 거 필요 없음 (자동 반영)
         },
         label: const Text('✍️ 게시글 작성하기'),
       ),
